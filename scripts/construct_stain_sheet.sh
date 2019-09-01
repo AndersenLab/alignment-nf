@@ -252,6 +252,6 @@ if [[ $(cut -f 2 ${fq_sheet}  | sort | uniq -c | grep -v '1 ') ]]; then
     exit 1
 else
     echo "$(cat ../SM_strain_sheet.tsv | wc -l) records. Sample sheet output to ../SM_strain_sheet.tsv"
-    cat ${fq_sheet} | sort > ../SM_strain_sheet.tsv
+    cat ${fq_sheet} | grep -v -E "(ECA252|ECA339|LSJ1|ECA253|ECA254)" | sort > ../SM_strain_sheet.tsv
 fi
 

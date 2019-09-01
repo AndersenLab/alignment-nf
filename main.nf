@@ -80,34 +80,9 @@ param_summary = '''
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
 
 """
-println param_summary
 
 
-if (params.reference == "(required)" || params.fqs == "(required)") {
-
-    println """
-    The Set/Default column shows what the value is currently set to
-    or would be set to if it is not specified (it's default).
-    """
-    System.exit(1)
-}
-
-if (!reference.exists()) {
-    println """
-    Error: Reference does not exist
-    """
-    System.exit(1)
-}
-
-
-if (!fq_file.exists()) {
-    println """
-    Error: fastq sheet does not exist
-    """
-    System.exit(1)
-}
-
-// Check the goal for running
+// Check the goal setting
 if (params.goal != "strain" && params.goal != "isotype") {
 	println """
 	Error: the alignment goal has to be defined, please add '--goal "strain"' or '--goal "isotype"' when runing
@@ -237,7 +212,7 @@ process merge_kmer {
 
 }
 
-fq_bam_set.into { fq_cov_bam; fq_stats_bam; fq_idx_stats_bam }
+fq_bam_set.into { fq_cov_bam; fq_stats_bam; fq_idx_stats_bam; bam_strain_stats}
 
 bam_set.into { bam_set1; bam_set2 }
 
@@ -293,6 +268,8 @@ process coverage_fq {
 
     tag { ID }
 
+    label 'bam_coverage'
+
     input:
         set val(ID), file("${ID}.bam"), file("${ID}.bam.bai") from fq_cov_bam
     output:
@@ -341,6 +318,7 @@ process fq_idx_stats {
         set val(ID), file("${ID}.bam"), file("${ID}.bam.bai") from fq_idx_stats_bam
     output:
         file fq_idxstats into fq_idxstats_set
+        file fq_idxstats into strain_bam_idxstats_multiqc
     when:
         params.goal == "strain"
 
@@ -358,6 +336,7 @@ process fq_combine_idx_stats {
 
     output:
         file("fq_bam_idxstats.tsv")
+        
     when:
         params.goal == "strain"
 
@@ -518,6 +497,8 @@ process coverage_SM {
 
     tag { SM }
 
+    label 'bam_coverage'
+
     input:
         set val(SM), file("${SM}.bam"), file("${SM}.bam.bai") from merged_bams_for_coverage
 
@@ -577,6 +558,34 @@ process coverage_bins_merge {
         gzip SM_coverage.mb.tsv
     """
 }
+
+process bam_strain_stats {
+
+    cpus params.cores
+
+    tag { SM }
+
+    input:
+        set val(SM), file("${SM}.bam"), file("${SM}.bam.bai") from bam_strain_stats
+
+    output:
+        file("${SM}.samtools.txt") into strain_SM_samtools_stats_set
+        file("${SM}.bamtools.txt") into strain_SM_bamtools_stats_set
+        file("${SM}_fastqc.zip") into strain_SM_fastqc_stats_set
+        file("${SM}.picard.*") into strain_SM_picard_stats_set
+    when:
+         params.goal == "strain"
+
+    """
+        samtools stats --threads=${task.cpus} ${SM}.bam > ${SM}.samtools.txt
+        bamtools -in ${SM}.bam > ${SM}.bamtools.txt
+        fastqc --threads ${task.cpus} ${SM}.bam
+        picard CollectAlignmentSummaryMetrics R=${reference_handle} I=${SM}.bam O=${SM}.picard.alignment_metrics.txt
+        picard CollectInsertSizeMetrics I=${SM}.bam O=${SM}.picard.insert_metrics.txt H=${SM}.picard.insert_histogram.txt
+    """
+
+}
+
 
 
 /*
@@ -707,6 +716,8 @@ process isotype_coverage_SM {
 
     tag { SM }
 
+    label 'bam_coverage'
+
     input:
         set val(SM), file("${SM}.bam"), file("${SM}.bam.bai") from bam_coverage
 
@@ -808,7 +819,7 @@ process combine_telseq {
     '''
 }
 
-process multiqc_report {
+process isotype_multiqc_report {
 
     publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/report", mode: 'copy'
 
@@ -820,13 +831,41 @@ process multiqc_report {
         file("bam*.idxstats") from bam_idxstats_multiqc.toSortedList()
 
     output:
-        file("multiqc_data/*.json") into multiqc_json_files
+        file("multiqc_data/*.json") into multiqc_json_files_isotype
         file("multiqc.html")
+
+    when:
+        params.goal == "isotype"
 
     """
         multiqc -k json --filename multiqc.html .
     """
 }
+
+
+process strain_multiqc_report {
+
+    publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/report", mode: 'copy'
+
+    input:
+        file(samtools_stats) from strain_SM_samtools_stats_set.toSortedList()
+        file(fastqc) from strain_SM_fastqc_stats_set.toSortedList()
+        file("picard*.stats.txt") from strain_SM_picard_stats_set.collect()
+        file(bamtools_stats) from strain_SM_bamtools_stats_set.toSortedList()
+        file("bam*.idxstats") from strain_bam_idxstats_multiqc.toSortedList()
+
+    output:
+        file("multiqc_data/*.json") into multiqc_json_files_strain
+        file("multiqc.html")
+
+    when:
+        params.goal == "strain"
+
+    """
+        multiqc -k json --filename multiqc.html .
+    """
+}
+
 
 // Pipeline work summary, there would be a email notification if email has been given.
 workflow.onComplete {
@@ -844,12 +883,6 @@ workflow.onComplete {
     """
 
     println summary
-
-    def outlog = new File("${params.bamdir}/WI/${params.goal}/${params.out}/log.txt")
-    outlog.newWriter().withWriter {
-        outlog << param_summary
-        outlog << summary
-    }
 
     // mail summary
     if (params.email) {
