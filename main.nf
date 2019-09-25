@@ -49,7 +49,7 @@ if (params.debug == true) {
     // The SM sheet that is used is located in the root of the git repo
     params.bamdir = "(required)"
     params.fqs = "SM_${params.goal}_sheet.tsv"
-    params.fq_file_prefix = null;
+    params.fq_file_prefix = "";
 }
 
 File fq_file = new File(params.fqs);
