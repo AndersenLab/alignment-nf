@@ -25,16 +25,7 @@ params.goal = "" //This is very important and has to be set to "strain" or "isot
 params.tmpdir = "tmp/"
 params.email = ""
 params.reference = "(required)"
-
-
-// Compressed Reference File
-File reference = new File("${params.reference}")
-if (params.reference != "(required)") {
-   reference_handle = reference.getAbsolutePath();
-   reference_handle_uncompressed = reference_handle.replace(".gz", "")
-} else {
-   reference_handle = "(required)"
-}
+params.env_container = ""
 
 // Debug
 if (params.debug == true) {
@@ -54,6 +45,16 @@ if (params.debug == true) {
 
 File fq_file = new File(params.fqs);
 
+// reference genome
+Channel.fromPath("${params.reference}/*")
+       .into { reference1; reference2; reference3 }
+
+
+println """
+    fqs = ${params.fqs}
+    fq_file_prefix = ${params.fq_file_prefix}
+    reference = ${params.reference}
+"""
 
 param_summary = '''
              ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
@@ -93,12 +94,17 @@ if (params.goal != "strain" && params.goal != "isotype") {
 // Read sample sheet
 strainFile = new File(params.fqs)
 
-if (params.fq_file_prefix != "") {
-    fqs = Channel.from(fq_file.collect { it.tokenize( '\t' ) })
-                 .map { SM, ID, LB, fq1, fq2, seq_folder -> [SM, ID, LB, file("${params.fq_file_prefix}/${fq1}"), file("${params.fq_file_prefix}/${fq2}"), seq_folder] }
+if (params.fq_file_prefix) {
+println "Using fq prefix"
+println params.fq_file_prefix
+//fq_file_prefix = fq_file.getParentFile().getAbsolutePath();
+fqs = Channel.from(fq_file.collect { it.tokenize( '\t' ) })
+             .map { SM, ID, LB, fq1, fq2, seq_folder -> ["${SM}", ID, LB, file("${params.fq_file_prefix}/${fq1}"), file("${params.fq_file_prefix}/${fq2}"), seq_folder] }
+             .view()
+
 } else {
-    fqs = Channel.from(fq_file.collect { it.tokenize( '\t' ) })
-                 .map { SM, ID, LB, fq1, fq2, seq_folder -> [SM, ID, LB, file("${fq1}"), file("${fq2}"), seq_folder] }
+fqs = Channel.from(fq_file.collect { it.tokenize( '\t' ) })
+         .map { SM, ID, LB, fq1, fq2, seq_folder -> [SM, ID, LB, file("${fq1}"), file("${fq2}"), seq_folder] }
 }
 
 
@@ -120,14 +126,15 @@ process perform_alignment {
     tag { ID }
 
     input:
-        set SM, ID, LB, fq1, fq2, seq_folder from fqs_align
+        set SM, ID, LB, file(fq1), file(fq2), seq_folder from fqs_align
+        file("${params.genome}/*") from reference1.collect()
     output:
         set val(SM), file("${ID}.bam"), file("${ID}.bam.bai") into SM_aligned_bams
         set val(ID), file("${ID}.bam"), file("${ID}.bam.bai") into fq_bam_set
 
     
     """
-        bwa mem -t ${task.cpus} -R '@RG\\tID:${ID}\\tLB:${LB}\\tSM:${SM}' ${reference_handle} ${fq1} ${fq2} | \\
+        bwa mem -t ${task.cpus} -R '@RG\\tID:${ID}\\tLB:${LB}\\tSM:${SM}' ${params.genome}/${params.genome}.fa.gz ${fq1} ${fq2} | \\
         sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
         sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=${params.tmpdir} --out=${ID}.bam /dev/stdin
         sambamba index --nthreads=${task.cpus} ${ID}.bam
@@ -136,6 +143,7 @@ process perform_alignment {
         fi
     """
 }
+
 
 /* 
   Merge - Generate SM Bam
@@ -150,19 +158,20 @@ process merge_bam {
     tag { SM }
 
     input:
-        set SM, bam, index from SM_aligned_bams.groupTuple()
+        set SM, file(bam), file(index) from SM_aligned_bams.groupTuple()
 
     output:
         set val(SM), file("${SM}.bam"), file("${SM}.bam.bai") into bam_set
         file("${SM}.duplicates.txt") into duplicates_file
         
     """
-    count=`echo ${bam.join(" ")} | tr ' ' '\\n' | wc -l`
+    ls -al 1>&2
+    count=`ls $bam | wc -l`
     if [ "\${count}" -eq "1" ]; then
-        ln -s ${bam.join(" ")} ${SM}.merged.bam
-        ln -s ${bam.join(" ")}.bai ${SM}.merged.bam.bai
+        ln -s *.bam ${SM}.merged.bam
+        ln -s *.bai ${SM}.merged.bam.bai
     else
-        sambamba merge --nthreads=${task.cpus} --show-progress ${SM}.merged.bam ${bam.sort().join(" ")}
+        sambamba merge --nthreads=${task.cpus} --show-progress ${SM}.merged.bam $bam
         sambamba index --nthreads=${task.cpus} ${SM}.merged.bam
     fi
     picard MarkDuplicates I=${SM}.merged.bam O=${SM}.bam M=${SM}.duplicates.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=false
@@ -523,7 +532,7 @@ process coverage_SM_merge {
     publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/SM", mode: 'copy', overwrite: true
 
     input:
-        val sm_set from SM_coverage.toSortedList()
+         file(sm_set) from SM_coverage.toSortedList()
 
     output:
         file("SM_coverage.full.tsv")
@@ -544,7 +553,7 @@ process coverage_bins_merge {
     publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/SM", mode: 'copy', overwrite: true
 
     input:
-        val mb from SM_1mb_coverage.toSortedList()
+        file(mb) from SM_1mb_coverage.toSortedList()
         val kb_100 from SM_100kb_coverage.toSortedList()
 
     output:
@@ -567,6 +576,7 @@ process bam_strain_stats {
 
     input:
         set val(SM), file("${SM}.bam"), file("${SM}.bam.bai") from bam_strain_stats
+        file("${params.genome}/*") from reference2.collect()
 
     output:
         file("${SM}.samtools.txt") into strain_SM_samtools_stats_set
@@ -580,7 +590,7 @@ process bam_strain_stats {
         samtools stats --threads=${task.cpus} ${SM}.bam > ${SM}.samtools.txt
         bamtools -in ${SM}.bam > ${SM}.bamtools.txt
         fastqc --threads ${task.cpus} ${SM}.bam
-        picard CollectAlignmentSummaryMetrics R=${reference_handle} I=${SM}.bam O=${SM}.picard.alignment_metrics.txt
+        picard CollectAlignmentSummaryMetrics R=${params.genome}/${params.genome}.fa.gz I=${SM}.bam O=${SM}.picard.alignment_metrics.txt
         picard CollectInsertSizeMetrics I=${SM}.bam O=${SM}.picard.insert_metrics.txt H=${SM}.picard.insert_histogram.txt
     """
 
@@ -602,7 +612,7 @@ process bam_isotype_stats {
 
     input:
         set val(SM), file("${SM}.bam"), file("${SM}.bam.bai") from bam_isotype_stats
-
+        file("${params.genome}/*") from reference3.collect()
     output:
         file("${SM}.samtools.txt") into SM_samtools_stats_set
         file("${SM}.bamtools.txt") into SM_bamtools_stats_set
@@ -615,7 +625,7 @@ process bam_isotype_stats {
         samtools stats --threads=${task.cpus} ${SM}.bam > ${SM}.samtools.txt
         bamtools -in ${SM}.bam > ${SM}.bamtools.txt
         fastqc --threads ${task.cpus} ${SM}.bam
-        picard CollectAlignmentSummaryMetrics R=${reference_handle} I=${SM}.bam O=${SM}.picard.alignment_metrics.txt
+        picard CollectAlignmentSummaryMetrics R=${params.genome}/${params.genome}.fa.gz I=${SM}.bam O=${SM}.picard.alignment_metrics.txt
         picard CollectInsertSizeMetrics I=${SM}.bam O=${SM}.picard.insert_metrics.txt H=${SM}.picard.insert_histogram.txt
     """
 
@@ -649,7 +659,7 @@ process SM_combine_idx_stats {
     publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/SM", mode: "copy"
 
     input:
-        val bam_idxstats from isotype_bam_idxstats_set.toSortedList()
+        file(bam_idxstats) from isotype_bam_idxstats_set.toSortedList()
 
     output:
         file("isotype_bam_idxstats.tsv")
@@ -694,7 +704,7 @@ process combine_isotype_bam_stats {
     publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/SM", mode: "copy"
 
     input:
-        val stat_files from isotype_SM_bam_stat_files.collect()
+        file(stat_files) from isotype_SM_bam_stat_files.collect()
 
     output:
         file("isotype_bam_stats.tsv")
@@ -738,7 +748,7 @@ process isotype_coverage_SM_merge {
     publishDir "${params.bamdir}/WI/${params.goal}/${params.out}/SM", mode: 'copy'
 
     input:
-        val sm_set from isotype_coverage.toSortedList()
+        file(sm_set) from isotype_coverage.toSortedList()
 
     output:
         file("isotype_coverage.full.tsv") into mt_content
@@ -855,7 +865,7 @@ process strain_multiqc_report {
         file("bam*.idxstats") from strain_bam_idxstats_multiqc.toSortedList()
 
     output:
-        file("multiqc_data/*.json") into multiqc_json_files_strain
+        file("multiqc_data/*.json") into multiqc_json_files_strain optional true
         file("multiqc.html")
 
     when:
