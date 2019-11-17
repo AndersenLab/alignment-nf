@@ -56,7 +56,7 @@ println """
     reference = ${params.reference}
 """
 
-param_summary = '''
+log.info'''
              ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
              ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
              ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
@@ -86,7 +86,7 @@ param_summary = '''
 // Check the goal setting
 if (params.goal != "strain" && params.goal != "isotype") {
 	println """
-	Error: the alignment goal has to be defined, please add '--goal "strain"' or '--goal "isotype"' when runing
+	Error: the alignment goal has to be defined, please add --goal strain or --goal isotype when runing
 	"""
 	System.exit(1)
 }
@@ -94,18 +94,8 @@ if (params.goal != "strain" && params.goal != "isotype") {
 // Read sample sheet
 strainFile = new File(params.fqs)
 
-if (params.fq_file_prefix) {
-println "Using fq prefix"
-println params.fq_file_prefix
-//fq_file_prefix = fq_file.getParentFile().getAbsolutePath();
-fqs = Channel.from(fq_file.collect { it.tokenize( '\t' ) })
-             .map { SM, ID, LB, fq1, fq2, seq_folder -> ["${SM}", ID, LB, file("${params.fq_file_prefix}/${fq1}"), file("${params.fq_file_prefix}/${fq2}"), seq_folder] }
-             .view()
-
-} else {
 fqs = Channel.from(fq_file.collect { it.tokenize( '\t' ) })
          .map { SM, ID, LB, fq1, fq2, seq_folder -> [SM, ID, LB, file("${fq1}"), file("${fq2}"), seq_folder] }
-}
 
 
 fqs.into {
@@ -121,22 +111,21 @@ fqs.into {
 
 process perform_alignment {
 
-    cpus params.cores
-
+    label 'high_cpu'
     tag { ID }
 
     input:
         set SM, ID, LB, file(fq1), file(fq2), seq_folder from fqs_align
-        file("${params.genome}/*") from reference1.collect()
+        
     output:
         set val(SM), file("${ID}.bam"), file("${ID}.bam.bai") into SM_aligned_bams
         set val(ID), file("${ID}.bam"), file("${ID}.bam.bai") into fq_bam_set
 
     
     """
-        bwa mem -t ${task.cpus} -R '@RG\\tID:${ID}\\tLB:${LB}\\tSM:${SM}' ${params.genome}/${params.genome}.fa.gz ${fq1} ${fq2} | \\
+        bwa mem -t ${task.cpus} -R '@RG\\tID:${ID}\\tLB:${LB}\\tSM:${SM}' ${params.reference} ${fq1} ${fq2} | \\
         sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
-        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=${params.tmpdir} --out=${ID}.bam /dev/stdin
+        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${ID}.bam /dev/stdin
         sambamba index --nthreads=${task.cpus} ${ID}.bam
         if [[ ! \$(samtools view ${ID}.bam | head -n 10) ]]; then
             exit 1;
@@ -241,26 +230,6 @@ bam_set2.into {
                   bam_telseq;
                   bam_isotype_stats;
     }
-
-/*if (params.goal == "strain") {
-    bam_set.into { 
-               merged_bams_for_coverage;
-               merged_bams_individual;
-               merged_bams_union;
-               bams_idxstats;
-               bams_stats;
-               fq_concordance_bam
-             }
-} else {
-    bam_set.into {
-                  bam_idxstats;
-                  bam_stats;
-                  bam_coverage;
-                  bam_telseq;
-                  bam_isotype_stats;
-    }
-} */
-
 
 /*
 =======================================================
