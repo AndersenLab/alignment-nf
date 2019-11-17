@@ -6,11 +6,6 @@
  *
  */
 
-
-/*
-    Globals
-*/
-
 /* 
     ======
     Params
@@ -29,9 +24,9 @@ params.env_container = ""
 
 // Debug
 if (params.debug == true) {
-    println """
+    log.info '''
         *** Using debug mode ***
-    """
+    '''
     params.bamdir = "${params.out}/bam"
     params.fqs = "${workflow.projectDir}/${params.goal}_test_data/sample_sheet.tsv"
     params.fq_file_prefix = "${workflow.projectDir}/${params.goal}_test_data"
@@ -68,7 +63,6 @@ log.info'''
     parameters              description                    Set/Default
     ==========              ===========                    =======
     --debug                 Set to 'true' to test          ${params.debug}
-    --cores                 Regular job cores              ${params.cores}
     --goal                  for strain or isotype          ${params.goal}
     --out                   Directory to output results    ${params.out}
     --fqs                   fastq file (see help)          ${params.fqs}
