@@ -132,19 +132,6 @@ process merge_bam {
                 sambamba merge --nthreads=${task.cpus} --show-progress ${strain}.bam ${bam}
                 sambamba index --nthreads=${task.cpus} ${strain}.bam
             """
-    // """
-    // ls -al 1>&2
-    // count=`ls $bam | wc -l`
-    // if [ "\${count}" -eq "1" ]; then
-    //     ln -s *.bam ${SM}.merged.bam
-    //     ln -s *.bai ${SM}.merged.bam.bai
-    // else
-    //     sambamba merge --nthreads=${task.cpus} --show-progress ${SM}.merged.bam $bam
-    //     sambamba index --nthreads=${task.cpus} ${SM}.merged.bam
-    // fi
-    // picard MarkDuplicates I=${SM}.merged.bam O=${SM}.bam M=${SM}.duplicates.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=false
-    // sambamba index --nthreads=${task.cpus} ${SM}.bam
-    // """
 }
 
 process mark_dups {
@@ -157,14 +144,45 @@ process mark_dups {
     input:
         tuple strain, row, file("in.bam"), file("in.bam.bai")
     output:
-        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
+        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai"), emit: "bams"
         path "${strain}.duplicates.txt", emit: "markdups"
 
     """
     picard MarkDuplicates I=in.bam O=${strain}.bam M=${strain}.duplicates.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=false
     sambamba index --nthreads=${task.cpus} ${strain}.bam
     """
+}
 
+process symlink_ref_strains {
+    /*
+        This process creates a link for any
+        strain labeled as a 'reference strain'
+        in a new reference folder.
+
+        So output will be:
+            all/ → All strains
+            reference_strain/ → reference strains
+
+        The use of symlinks saves on disk space.
+    */
+    tag { row.strain }
+    executor 'local'
+    when:
+        println row
+        println "${row.reference_strain} == ?"
+        println row.reference_strain == "TRUE";
+        row.reference_strain == "TRUE"
+    input:
+        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
+
+    script:
+        // check if bamdir is abs. path
+        bamdir_path = file(params.bamdir).exists() ? "${workflow.projectDir}/${params.bamdir}" : params.bamdir
+    """
+        mkdir -p ${bamdir_path}/WI/strain/reference_strain/
+        ln -s ${bamdir_path}/WI/strain/all/${strain}.bam ${bamdir_path}/WI/strain/reference_strain/${strain}.bam
+        ln -s ${bamdir_path}/WI/strain/all/${strain}.bam.bai ${bamdir_path}/WI/strain/reference_strain/${strain}.bam.bai
+    """
 }
 
 // process kmer_counting {
@@ -890,6 +908,7 @@ workflow {
                         .groupTuple()
                         .map { strain, row, bam, bai -> [strain, row.sort()[0], bam, bai, row.size()] }
     merge_in | merge_bam | mark_dups
+    mark_dups.out.bams | symlink_ref_strains
                  
 }
 
