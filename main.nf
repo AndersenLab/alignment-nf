@@ -168,9 +168,6 @@ process symlink_ref_strains {
     tag { row.strain }
     executor 'local'
     when:
-        println row
-        println "${row.reference_strain} == ?"
-        println row.reference_strain == "TRUE";
         row.reference_strain == "TRUE"
     input:
         tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
@@ -180,8 +177,12 @@ process symlink_ref_strains {
         bamdir_path = file(params.bamdir).exists() ? "${workflow.projectDir}/${params.bamdir}" : params.bamdir
     """
         mkdir -p ${bamdir_path}/WI/strain/reference_strain/
-        ln -s ${bamdir_path}/WI/strain/all/${strain}.bam ${bamdir_path}/WI/strain/reference_strain/${strain}.bam
-        ln -s ${bamdir_path}/WI/strain/all/${strain}.bam.bai ${bamdir_path}/WI/strain/reference_strain/${strain}.bam.bai
+        if [ ! -L ${bamdir_path}/WI/strain/reference_strain/${strain}.bam ]; then
+            ln -s ${bamdir_path}/WI/strain/all/${strain}.bam ${bamdir_path}/WI/strain/reference_strain/${strain}.bam
+        fi;
+        if [ ! -L ${bamdir_path}/WI/strain/reference_strain/${strain}.bam.bai ]; then
+            ln -s ${bamdir_path}/WI/strain/all/${strain}.bam.bai ${bamdir_path}/WI/strain/reference_strain/${strain}.bam.bai
+        fi;
     """
 }
 

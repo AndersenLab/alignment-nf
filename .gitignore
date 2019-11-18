@@ -2,3 +2,5 @@ report.html*
 .nextflow.log*
 .nextflow
 bam_debug
+work/*
+Alignment*/
