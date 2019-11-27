@@ -4,3 +4,4 @@ report.html*
 bam_debug
 work/*
 Alignment*/
+pipeline_info/*
