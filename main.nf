@@ -86,8 +86,9 @@ include multiqc as multiqc_strain from './modules/qc.module.nf' params(bamdir: p
 
 process alignment {
 
-    label 'high_cpu'
     tag { row.id }
+    
+    label 'md'
     conda "bwa=0.7.17 sambamba=0.7.0"
 
     input:
@@ -122,8 +123,9 @@ process alignment {
 process merge_bam {
 
     tag { row.strain }
+
+    label 'md'
     conda "bwa=0.7.17 sambamba=0.7.0"
-    label 'high_cpu'
 
     input:
         tuple strain, row, path(bam), path(bai), val(n_count)
@@ -147,7 +149,8 @@ process merge_bam {
 process mark_dups {
 
     tag { "${strain}" }
-    label 'high_cpu'
+
+    label 'lg'
     publishDir "${params.bamdir}/WI/strain/all", mode: 'copy', pattern: '*.bam*'
     conda 'picard=2.21.3'
 
@@ -175,8 +178,9 @@ process symlink_ref_strains {
 
         The use of symlinks saves on disk space.
     */
-    executor 'local'
     tag { "${row.strain}" }
+    
+    executor 'local'
     when:
         row.reference_strain == "TRUE"
     input:

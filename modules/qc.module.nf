@@ -6,9 +6,10 @@
 process coverage {
 
     tag {"${grouping} -> ${name}" }
+    
     publishDir "${params.bamdir}/WI/strain/coverage/${grouping}", mode: 'copy'
     conda { System.properties['os.name'] != "Mac OS X" ? 'bioconda::mosdepth=0.2.6' : "" }
-    label 'mid'
+    label 'md'
 
     input:
         tuple grouping, name, path("in.bam"), file("in.bam.bai")
@@ -35,6 +36,8 @@ process idxstats {
     
     tag {"${grouping} -> ${name}" }
 
+    label 'sm'
+
     input:
         tuple grouping, name, path("in.bam"), file("in.bam.bai")
     output:
@@ -48,6 +51,8 @@ process idxstats {
 process stats {
     
     tag {"${grouping} -> ${name}" }
+
+    label 'sm'
 
     input:
         tuple grouping, name, path("in.bam"), file("in.bam.bai")
@@ -64,6 +69,8 @@ process flagstat {
     
     tag {"${grouping} -> ${name}" }
 
+    label 'sm'
+
     input:
         tuple grouping, name, path("in.bam"), file("in.bam.bai")
     output:
@@ -72,6 +79,7 @@ process flagstat {
     """
         samtools flagstat in.bam > ${name}.flagstat
     """
+
 }
 
 /*
@@ -80,6 +88,7 @@ process flagstat {
 
 process kmer_counting {
 
+    label 'sm'
     conda 'fastq-tools=0.8'
     tag { "${row.strain}" }
 
@@ -96,11 +105,15 @@ process kmer_counting {
         fastq-kmers -k 6 | \\
         awk -v OFS="\t" -v ID=${row.id} -v SM=${row.strain} -v fq_wc="\${fq_wc}" 'NR > 1 { print \$0, SM, ID, fq_wc }' - > ${row.id}.kmer.tsv
     """
+
 }
 
 
 process aggregate_kmer {
 
+    tag "aggregate-kmer"
+
+    label 'sm'
     publishDir "${params.bamdir}/WI/strain/_aggregate", mode: 'copy'
 
     input:
@@ -120,6 +133,7 @@ process multiqc {
 
     tag { "multiqc" }
 
+    tag 'md'
     publishDir "${params.bamdir}/WI/strain/_aggregate/multiqc", mode: 'copy'
     conda 'multiqc=1.8'
 
