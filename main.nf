@@ -18,11 +18,6 @@ parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software
 
 // Debug
 if (params.debug.toString() == "true") {
-    log.info '''
-
-        *** Using debug mode ***
-
-    '''
     params.output = "alignment-${date}-debug"
     params.fqs = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_file_prefix = "${workflow.projectDir}/test_data"
@@ -40,7 +35,12 @@ if (params.debug.toString() == "true") {
 // NXF_VER=19.09.0-edge nextflow run ...
 assert System.getenv("NXF_VER") == "19.09.0-edge"
 
-log.info '''
+def log_summary() {
+/*
+    Generates a log
+*/
+
+out = '''
 
              ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
              ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
@@ -51,7 +51,11 @@ log.info '''
                          ▝▘
 '''
 
-log.info """
+if (params.debug.toString() == "true") {
+    out += "\n\n============================= DEBUG =============================\n\n"
+}
+
+out += """
     parameters              description                    Set/Default
     ==========              ===========                    ========================
     --debug                 Set to 'true' to test          ${params.debug}
@@ -63,6 +67,10 @@ log.info """
 
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
 """
+log.info(out)
+
+out
+}
 
 // Includes
 include coverage as coverage_id from './modules/qc.module.nf' params(params)
@@ -83,18 +91,22 @@ include aggregate_kmer from './modules/qc.module.nf' params(params)
 include multiqc as multiqc_id from './modules/qc.module.nf' params(output: params.output, grouping: "id")
 include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
-process software {
+process summary {
     
     executor 'local'
 
     //conda 'fd'
+    publishDir "${params.output}", mode: 'copy'
+    
     input:
         val(run)
 
     output:
-        file("software.versions.txt")
+        path("summary.txt")
+        path("software_versions.txt")
 
     """
+        echo '''${log_summary()}''' > summary.txt
         fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
     """
 
@@ -214,15 +226,15 @@ process mark_dups {
 //         tuple row, path("${row.strain}.bam"), path("${row.strain}.bam.bai")
 
 //     script:
-//         // check if bamdir is abs. path
-//         bamdir_path = file(params.bamdir).exists() ? "${workflow.projectDir}/${params.bamdir}" : params.bamdir
+//         // check if outdir is abs. path
+//         outdir_path = file(params.output).exists() ? "${workflow.projectDir}/${params.outdir}" : params.outdir
 //     """
-//         mkdir -p ${bamdir_path}/reference_strain/
-//         if [ ! -L ${bamdir_path}/reference_strain/${row.strain}.bam ]; then
-//             ln -s ${bamdir_path}/all/${row.strain}.bam ${bamdir_path}/reference_strain/${row.strain}.bam
+//         mkdir -p ${outdir_path}/reference_strain/
+//         if [ ! -L ${outdir_path}/reference_strain/${row.strain}.bam ]; then
+//             ln -s ${outdir_path}/all/${row.strain}.bam ${outdir_path}/reference_strain/${row.strain}.bam
 //         fi;
-//         if [ ! -L ${bamdir_path}/reference_strain/${row.strain}.bam.bai ]; then
-//             ln -s ${bamdir_path}/all/${row.strain}.bam.bai ${bamdir_path}/reference_strain/${row.strain}.bam.bai
+//         if [ ! -L ${outdir_path}/reference_strain/${row.strain}.bam.bai ]; then
+//             ln -s ${outdir_path}/all/${row.strain}.bam.bai ${outdir_path}/reference_strain/${row.strain}.bam.bai
 //         fi;
 //     """
 // }
@@ -235,7 +247,7 @@ sample_sheet = Channel.fromPath(params.fqs, checkIfExists: true)
 workflow {
     
     // check software
-    software(Channel.from("run"))
+    summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_file_prefix ? row.fq1 = params.fq_file_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_file_prefix ? row.fq2 = params.fq_file_prefix + "/" + row.fq2 : row.fq2; row }
