@@ -1,24 +1,20 @@
-nextflow.preview.dsl=2 
 /*
- * Authors:
- * - Daniel Cook <danielecook@gmail.com>
- * - Ye Wang <yewangfaith@gmail.com>
- *
- */
+    Andersen Lab C. elegans Alignment Pipeline
+    Authors:
+    - Daniel Cook <danielecook@gmail.com>
+    - Ye Wang <yewangfaith@gmail.com>
+*/
+nextflow.preview.dsl=2 
 
 /* 
-    ======
     Params
-    ======
 */
 
 date = new Date().format( 'yyyyMMdd' )
 params.out = "Alignment-${date}"
 params.debug = false
-params.tmpdir = "tmp/"
 params.email = ""
-params.reference = "(required)"
-params.env_container = ""
+params.reference = "${workflow.projectDir}/WS245/WS245.fa.gz"
 
 // Debug
 if (params.debug == true) {
@@ -30,11 +26,17 @@ if (params.debug == true) {
     params.fq_file_prefix = "${workflow.projectDir}/test_data"
 
 } else {
-    // The SM sheet that is used is located in the root of the git repo
+    // The strain sheet that used for 'production' is located in the root of the git repo
     params.bamdir = "(required)"
     params.fqs = "sample_sheet.tsv"
     params.fq_file_prefix = "";
 }
+
+// For now, this pipeline requires NXF_VER 19.09.0
+// Prefix this version when running
+// e.g.
+// NXF_VER=19.09.0-edge nextflow run ...
+assert System.getenv("NXF_VER") == "19.09.0-edge"
 
 log.info '''
 
@@ -49,13 +51,13 @@ log.info '''
 
 log.info """
     parameters              description                    Set/Default
-    ==========              ===========                    =======
+    ==========              ===========                    ========================
     --debug                 Set to 'true' to test          ${params.debug}
     --fqs                   fastq file (see help)          ${params.fqs}
     --fq_file_prefix        fastq prefix                   ${params.fq_file_prefix}
     --reference             Reference Genome (w/ .gz)      ${params.reference}
     --bamdir                Location for bams              ${params.bamdir}
-    --tmpdir                A temporary directory          ${params.tmpdir}
+    --out                   Output prefix                  ${params.out}
     --email                 Email to be sent results       ${params.email}
 
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
@@ -79,6 +81,27 @@ include aggregate_kmer from './modules/qc.module.nf' params(params)
 
 include multiqc as multiqc_id from './modules/qc.module.nf' params(bamdir: params.bamdir, grouping: "id")
 include multiqc as multiqc_strain from './modules/qc.module.nf' params(bamdir: params.bamdir, grouping: "strain")
+
+process software {
+    
+    executor 'local'
+
+    //conda 'fd'
+    output:
+        file("software.versions.txt")
+
+    """
+        fd "\\.nf\$" . --exec awk -f parse_versions.awk > software_versions.txt
+    """
+
+}
+
+// process config {
+
+//     """
+//         fd "\\.nf$" . --exec awk -f parse_versions.awk > software_versions.txt
+//     """
+// }
 
 /* 
     Alignment
@@ -179,7 +202,7 @@ process symlink_ref_strains {
         The use of symlinks saves on disk space.
     */
     tag { "${row.strain}" }
-    
+
     executor 'local'
     when:
         row.reference_strain == "TRUE"
@@ -209,6 +232,8 @@ sample_sheet = Channel.fromPath(params.fqs, checkIfExists: true)
 
 workflow {
     
+    software
+
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_file_prefix ? row.fq1 = params.fq_file_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_file_prefix ? row.fq2 = params.fq_file_prefix + "/" + row.fq2 : row.fq2; row }
                 .map { row -> [row, file(row.fq1), file(row.fq2)]}
