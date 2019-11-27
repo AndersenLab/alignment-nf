@@ -4,30 +4,32 @@
     - Daniel Cook <danielecook@gmail.com>
     - Ye Wang <yewangfaith@gmail.com>
 */
-nextflow.preview.dsl=2 
+nextflow.preview.dsl=2
 
 /* 
     Params
 */
 
 date = new Date().format( 'yyyyMMdd' )
-params.out = "Alignment-${date}"
 params.debug = false
 params.email = ""
 params.reference = "${workflow.projectDir}/WS245/WS245.fa.gz"
+parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
 
 // Debug
-if (params.debug == true) {
+if (params.debug.toString() == "true") {
     log.info '''
+
         *** Using debug mode ***
+
     '''
-    params.bamdir = "${params.out}/bam"
+    params.output = "alignment-${date}-debug"
     params.fqs = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_file_prefix = "${workflow.projectDir}/test_data"
 
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
-    params.bamdir = "(required)"
+    params.output = "alignment-${date}"
     params.fqs = "sample_sheet.tsv"
     params.fq_file_prefix = "";
 }
@@ -56,8 +58,7 @@ log.info """
     --fqs                   fastq file (see help)          ${params.fqs}
     --fq_file_prefix        fastq prefix                   ${params.fq_file_prefix}
     --reference             Reference Genome (w/ .gz)      ${params.reference}
-    --bamdir                Location for bams              ${params.bamdir}
-    --out                   Output prefix                  ${params.out}
+    --output                Location for output            ${params.output}
     --email                 Email to be sent results       ${params.email}
 
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
@@ -79,19 +80,22 @@ include flagstat as flagstat_strain from './modules/qc.module.nf' params(params)
 include kmer_counting from './modules/qc.module.nf' params(params)
 include aggregate_kmer from './modules/qc.module.nf' params(params)
 
-include multiqc as multiqc_id from './modules/qc.module.nf' params(bamdir: params.bamdir, grouping: "id")
-include multiqc as multiqc_strain from './modules/qc.module.nf' params(bamdir: params.bamdir, grouping: "strain")
+include multiqc as multiqc_id from './modules/qc.module.nf' params(output: params.output, grouping: "id")
+include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
 process software {
     
     executor 'local'
 
     //conda 'fd'
+    input:
+        val(run)
+
     output:
         file("software.versions.txt")
 
     """
-        fd "\\.nf\$" . --exec awk -f parse_versions.awk > software_versions.txt
+        fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
     """
 
 }
@@ -174,7 +178,7 @@ process mark_dups {
     tag { "${strain}" }
 
     label 'lg'
-    publishDir "${params.bamdir}/WI/strain/all", mode: 'copy', pattern: '*.bam*'
+    publishDir "${params.output}/all", mode: 'copy', pattern: '*.bam*'
     conda 'picard=2.21.3'
 
     input:
@@ -189,50 +193,49 @@ process mark_dups {
     """
 }
 
-process symlink_ref_strains {
-    /*
-        This process creates a link for any
-        strain labeled as a 'reference strain'
-        in a new reference folder.
+// process symlink_ref_strains {
+//     /*
+//         This process creates a link for any
+//         strain labeled as a 'reference strain'
+//         in a new reference folder.
 
-        So output will be:
-            all/ → All strains
-            reference_strain/ → reference strains
+//         So output will be:
+//             all/ → All strains
+//             reference_strain/ → reference strains
 
-        The use of symlinks saves on disk space.
-    */
-    tag { "${row.strain}" }
+//         The use of symlinks saves on disk space.
+//     */
+//     tag { "${row.strain}" }
 
-    executor 'local'
-    when:
-        row.reference_strain == "TRUE"
-    input:
-        tuple row, path("${row.strain}.bam"), path("${row.strain}.bam.bai")
+//     executor 'local'
+//     when:
+//         row.reference_strain == "TRUE"
+//     input:
+//         tuple row, path("${row.strain}.bam"), path("${row.strain}.bam.bai")
 
-    script:
-        // check if bamdir is abs. path
-        bamdir_path = file(params.bamdir).exists() ? "${workflow.projectDir}/${params.bamdir}" : params.bamdir
-    """
-        mkdir -p ${bamdir_path}/WI/strain/reference_strain/
-        if [ ! -L ${bamdir_path}/WI/strain/reference_strain/${row.strain}.bam ]; then
-            ln -s ${bamdir_path}/WI/strain/all/${row.strain}.bam ${bamdir_path}/WI/strain/reference_strain/${row.strain}.bam
-        fi;
-        if [ ! -L ${bamdir_path}/WI/strain/reference_strain/${row.strain}.bam.bai ]; then
-            ln -s ${bamdir_path}/WI/strain/all/${row.strain}.bam.bai ${bamdir_path}/WI/strain/reference_strain/${row.strain}.bam.bai
-        fi;
-    """
-}
-
+//     script:
+//         // check if bamdir is abs. path
+//         bamdir_path = file(params.bamdir).exists() ? "${workflow.projectDir}/${params.bamdir}" : params.bamdir
+//     """
+//         mkdir -p ${bamdir_path}/reference_strain/
+//         if [ ! -L ${bamdir_path}/reference_strain/${row.strain}.bam ]; then
+//             ln -s ${bamdir_path}/all/${row.strain}.bam ${bamdir_path}/reference_strain/${row.strain}.bam
+//         fi;
+//         if [ ! -L ${bamdir_path}/reference_strain/${row.strain}.bam.bai ]; then
+//             ln -s ${bamdir_path}/all/${row.strain}.bam.bai ${bamdir_path}/reference_strain/${row.strain}.bam.bai
+//         fi;
+//     """
+// }
 
 // Read sample sheet
 sample_sheet = Channel.fromPath(params.fqs, checkIfExists: true)
                       .ifEmpty { exit 1, "sample sheet not found" }
                       .splitCsv(header:true, sep: "\t")
 
-
 workflow {
     
-    software
+    // check software
+    software(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_file_prefix ? row.fq1 = params.fq_file_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_file_prefix ? row.fq2 = params.fq_file_prefix + "/" + row.fq2 : row.fq2; row }

@@ -6,8 +6,8 @@
 process coverage {
 
     tag {"${grouping} -> ${name}" }
-    
-    publishDir "${params.bamdir}/WI/strain/coverage/${grouping}", mode: 'copy'
+
+    publishDir "${params.output}/coverage/${grouping}", mode: 'copy'
     conda { System.properties['os.name'] != "Mac OS X" ? 'bioconda::mosdepth=0.2.6' : "" }
     label 'md'
 
@@ -114,7 +114,7 @@ process aggregate_kmer {
     tag "aggregate-kmer"
 
     label 'sm'
-    publishDir "${params.bamdir}/WI/strain/_aggregate", mode: 'copy'
+    publishDir "${params.output}/_aggregate", mode: 'copy'
 
     input:
         file("kmer*.tsv")
@@ -134,7 +134,7 @@ process multiqc {
     tag { "multiqc" }
 
     tag 'md'
-    publishDir "${params.bamdir}/WI/strain/_aggregate/multiqc", mode: 'copy'
+    publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'
     conda 'multiqc=1.8'
 
     input:
