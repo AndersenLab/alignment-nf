@@ -91,6 +91,7 @@ process kmer_counting {
     label 'sm'
     conda 'fastq-tools=0.8'
     tag { "${row.strain}" }
+    when params.kmers.toString() == "true"
 
     input:
         tuple row, file("fq1.fq.gz"), file("fq2.fq.gz")
@@ -115,6 +116,7 @@ process aggregate_kmer {
 
     label 'sm'
     publishDir "${params.output}/_aggregate", mode: 'copy'
+    when params.kmers.toString() == "true"
 
     input:
         file("kmer*.tsv")
@@ -128,7 +130,7 @@ process aggregate_kmer {
 }
 
 
-/* Aggregation */
+/* MULTI-QC */
 process multiqc {
 
     tag { "multiqc" }
@@ -147,6 +149,7 @@ process multiqc {
     // --config ${params.multiqc_config}
     """
         multiqc . --data-format tsv \\
+                  --config ${workflow.projectDir}/scripts/multiqc_config.yaml \\
                   --title ${params.grouping} \\
                   --flat
     """

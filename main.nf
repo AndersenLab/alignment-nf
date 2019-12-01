@@ -61,6 +61,7 @@ out += """
     --debug                 Set to 'true' to test          ${params.debug}
     --fqs                   fastq file (see help)          ${params.fqs}
     --fq_file_prefix        fastq prefix                   ${params.fq_file_prefix}
+    --kmers                 count kmers                    ${params.kmers}
     --reference             Reference Genome (w/ .gz)      ${params.reference}
     --output                Location for output            ${params.output}
     --email                 Email to be sent results       ${params.email}
@@ -194,13 +195,13 @@ process mark_dups {
     conda 'picard=2.21.3'
 
     input:
-        tuple val(strain), row, path("in.bam"), path("in.bam.bai")
+        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
     output:
         tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
         path "${strain}.duplicates.txt", emit: "markdups"
 
     """
-        picard MarkDuplicates I=in.bam O=${strain}.bam M=${strain}.duplicates.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=false
+        picard MarkDuplicates I=${strain}.in.bam O=${strain}.bam M=${strain}.duplicates.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=false
         sambamba index --nthreads=${task.cpus} ${strain}.bam
     """
 }
