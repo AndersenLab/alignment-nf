@@ -282,7 +282,7 @@ workflow {
                                     stats_strain.out).collect() | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
-    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${params.output}/bam/${row.strain}","${params.output}/bam/${row.strain}.bai"].join("\t") } \
+    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "bam/${row.strain}","bam/${row.strain}.bai"].join("\t") } \
                  .collectFile(name: 'strain_summary.tsv',
                               newLine: true,
                               storeDir: "${params.output}")
