@@ -144,7 +144,7 @@ process multiqc {
 
     output:
         path("${params.grouping}_multiqc_report.html")
-        path("${params.grouping}_multiqc_report_data/*")
+        path("${params.grouping}_data/*")
 
     // --config ${params.multiqc_config}
     """
@@ -152,6 +152,8 @@ process multiqc {
                   --config ${workflow.projectDir}/scripts/multiqc_config.yaml \\
                   --title ${params.grouping} \\
                   --flat
+        # mv data folder to reduce size
+        mv ${params.grouping}_multiqc_report_data/ ${params.grouping}_data/
     """
 
 }

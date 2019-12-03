@@ -2,7 +2,11 @@
 
 [Documentation](http://andersenlab.org/dry-guide/pipeline-alignment/)
 
-## Quick Reference
+## Overview
+
+![Overview of alignment-nf](img/alignment.png)
+
+## Debugging
 
 This pipeline runs very fast locally with the test set. You can run the following to make changes and evaluate output:
 

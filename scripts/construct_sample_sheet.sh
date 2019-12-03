@@ -1,7 +1,7 @@
 #!/bin/bash
 # 2019-11-17
-# This script constructs an inventory of all wild isolate FASTQ data
-# And merges it relevant data from the wild isolate data sheet.
+# This script constructs a sample sheet of all wild isolate FASTQ data
+# and merges it into a WI_sample_sheet.tsv file.
 set -e
 
 # Set working directory to script location

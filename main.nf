@@ -1,3 +1,4 @@
+#!/usr/bin/env nextflow 
 /*
     Andersen Lab C. elegans Alignment Pipeline
     Authors:
@@ -19,14 +20,14 @@ parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software
 // Debug
 if (params.debug.toString() == "true") {
     params.output = "alignment-${date}-debug"
-    params.fqs = "${workflow.projectDir}/test_data/sample_sheet.tsv"
-    params.fq_file_prefix = "${workflow.projectDir}/test_data"
+    params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
+    params.fq_prefix = "${workflow.projectDir}/test_data"
 
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
-    params.fqs = "sample_sheet.tsv"
-    params.fq_file_prefix = "";
+    params.sample_sheet = "sample_sheet.tsv"
+    params.fq_prefix = "";
 }
 
 // For now, this pipeline requires NXF_VER 19.09.0
@@ -59,8 +60,8 @@ out += """
     parameters              description                    Set/Default
     ==========              ===========                    ========================
     --debug                 Set to 'true' to test          ${params.debug}
-    --fqs                   fastq file (see help)          ${params.fqs}
-    --fq_file_prefix        fastq prefix                   ${params.fq_file_prefix}
+    --sample_sheet          sample_sheet (see help)        ${params.sample_sheet}
+    --fq_prefix             fastq prefix                   ${params.fq_prefix}
     --kmers                 count kmers                    ${params.kmers}
     --reference             Reference Genome (w/ .gz)      ${params.reference}
     --output                Location for output            ${params.output}
@@ -71,6 +72,11 @@ out += """
 log.info(out)
 
 out
+}
+
+if (params.help) {
+    log_summary()
+    exit 1
 }
 
 // Includes
@@ -103,22 +109,17 @@ process summary {
         val(run)
 
     output:
+        path("sample_sheet.tsv")
         path("summary.txt")
         path("software_versions.txt")
 
     """
         echo '''${log_summary()}''' > summary.txt
         fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
+        cat ${params.sample_sheet} > sample_sheet.tsv
     """
 
 }
-
-// process config {
-
-//     """
-//         fd "\\.nf$" . --exec awk -f parse_versions.awk > software_versions.txt
-//     """
-// }
 
 /* 
     Alignment
@@ -191,13 +192,14 @@ process mark_dups {
     tag { "${strain}" }
 
     label 'lg'
-    publishDir "${params.output}/all", mode: 'copy', pattern: '*.bam*'
+    publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
     conda 'picard=2.21.3'
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
     output:
         tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
+        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
         path "${strain}.duplicates.txt", emit: "markdups"
 
     """
@@ -241,7 +243,7 @@ process mark_dups {
 // }
 
 // Read sample sheet
-sample_sheet = Channel.fromPath(params.fqs, checkIfExists: true)
+sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
                       .ifEmpty { exit 1, "sample sheet not found" }
                       .splitCsv(header:true, sep: "\t")
 
@@ -250,8 +252,8 @@ workflow {
     // check software
     summary(Channel.from("run"))
 
-    aln_in = sample_sheet.map { row -> row.fq1 = params.fq_file_prefix ? row.fq1 = params.fq_file_prefix + "/" + row.fq1 : row.fq1; row }
-                .map { row -> row.fq2 = params.fq_file_prefix ? row.fq2 = params.fq_file_prefix + "/" + row.fq2 : row.fq2; row }
+    aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
+                .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
                 .map { row -> [row, file(row.fq1), file(row.fq2)]}
     aln_in | (alignment & kmer_counting)
     kmer_counting.out | aggregate_kmer
@@ -278,4 +280,11 @@ workflow {
                                     idxstats_strain.out,
                                     flagstat_strain.out,
                                     stats_strain.out).collect() | multiqc_strain                 
+
+    /* Generate a bam file summary for the next step */
+    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${params.output}/bam/${row.strain}","${params.output}/bam/${row.strain}.bai"].join("\t") } \
+                 .collectFile(name: 'strain_summary.tsv',
+                              newLine: true,
+                              storeDir: "${params.output}")
+
 }
