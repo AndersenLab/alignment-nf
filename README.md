@@ -4,7 +4,7 @@
 
 ## Overview
 
-![Overview of alignment-nf](img/alignment.png)
+![Overview of alignment-nf](http://andersenlab.org/dry-guide/img/alignment.png)
 
 ## Debugging
 
