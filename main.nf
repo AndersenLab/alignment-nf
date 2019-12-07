@@ -203,7 +203,13 @@ process mark_dups {
         path "${strain}.duplicates.txt", emit: "markdups"
 
     """
-        picard MarkDuplicates I=${strain}.in.bam O=${strain}.bam M=${strain}.duplicates.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=false
+        picard MarkDuplicates I=${strain}.in.bam \\
+                              O=${strain}.bam \\
+                              M=${strain}.duplicates.txt \\
+                              VALIDATION_STRINGENCY=SILENT \\
+                              REMOVE_DUPLICATES=false \\
+                              TAGGING_POLICY=All \\
+                              REMOVE_SEQUENCING_DUPLICATES=TRUE
         sambamba index --nthreads=${task.cpus} ${strain}.bam
     """
 }
