@@ -34,7 +34,7 @@ if (params.debug.toString() == "true") {
 // Prefix this version when running
 // e.g.
 // NXF_VER=19.09.0-edge nextflow run ...
-assert System.getenv("NXF_VER") == "19.09.0-edge"
+assert System.getenv("NXF_VER") == "19.12.0-edge"
 
 def log_summary() {
 /*
