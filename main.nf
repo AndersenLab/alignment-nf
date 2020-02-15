@@ -30,11 +30,11 @@ if (params.debug.toString() == "true") {
     params.fq_prefix = "";
 }
 
-// For now, this pipeline requires NXF_VER 19.09.0
+// For now, this pipeline requires NXF_VER 20.01.0-rc1
 // Prefix this version when running
 // e.g.
-// NXF_VER=19.09.0-edge nextflow run ...
-assert System.getenv("NXF_VER") == "19.12.0-edge"
+// NXF_VER=20.01.0-rc1 nextflow run ...
+assert System.getenv("NXF_VER") == "20.01.0-rc1"
 
 def log_summary() {
 /*
@@ -66,6 +66,8 @@ out += """
     --reference             Reference Genome (w/ .gz)      ${params.reference}
     --output                Location for output            ${params.output}
     --email                 Email to be sent results       ${params.email}
+
+    username                                               ${"whoami".execute().in.text}
 
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
 """
