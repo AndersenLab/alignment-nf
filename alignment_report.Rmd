@@ -89,17 +89,3 @@ ggplot(mapped) +
   labs(caption = glue::glue("Median % mapped = {median_mapped}"))
 
 ```
-
-```{r mapped_read_percent}
-
-median_mapped <- median(mapped$`Percent Mapped`, na.rm = TRUE)
-
-ggplot(mapped) + 
-  geom_histogram(aes(x = `Percent Mapped`), fill = "#A9A9A9") +
-  geom_vline(aes(xintercept = median_mapped), width = 5, color = "red") +
-  theme_bw() +
-  labs(x = "Reads Mapped (%)", y = "Count") +
-  presentation + 
-  labs(caption = glue::glue("Median % mapped = {median_mapped}"))
-
-```
