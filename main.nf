@@ -30,11 +30,11 @@ if (params.debug.toString() == "true") {
     params.fq_prefix = "";
 }
 
-// For now, this pipeline requires NXF_VER 20.01.0-rc1
+// For now, this pipeline requires NXF_VER 20.01.0
 // Prefix this version when running
 // e.g.
-// NXF_VER=20.01.0-rc1 nextflow run ...
-assert System.getenv("NXF_VER") == "20.01.0-rc1"
+// NXF_VER=20.01.0 nextflow run ...
+assert System.getenv("NXF_VER") == "20.01.0"
 
 def log_summary() {
 /*
@@ -100,155 +100,6 @@ include aggregate_kmer from './modules/qc.module.nf' params(params)
 include multiqc as multiqc_id from './modules/qc.module.nf' params(output: params.output, grouping: "id")
 include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
-process summary {
-    
-    executor 'local'
-
-    //conda 'fd'
-    publishDir "${params.output}", mode: 'copy'
-    
-    input:
-        val(run)
-
-    output:
-        path("sample_sheet.tsv")
-        path("summary.txt")
-        path("software_versions.txt")
-
-    """
-        echo '''${log_summary()}''' > summary.txt
-        fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
-        cat ${params.sample_sheet} > sample_sheet.tsv
-    """
-
-}
-
-/* 
-    Alignment
-*/
-
-process alignment {
-
-    tag { row.id }
-    
-    label 'md'
-    conda "bwa=0.7.17 sambamba=0.7.0"
-
-    input:
-        tuple row, path(fq1), path(fq2)
-        
-    output:
-        tuple row, file("${row.id}.bam"), file("${row.id}.bam.bai")
-
-	script:
-		// Construct read group
-		RG = ["@RG",
-			  "ID:${row.id}",
-			  "SM:${row.strain}",
-			  "LB:${row.lb}",
-			  "PL:illumina"].join("\\t")
-
-    """
-        bwa mem -t ${task.cpus} -R '${RG}' ${params.reference} ${fq1} ${fq2} | \\
-        sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
-        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${row.id}.bam /dev/stdin
-        sambamba index --nthreads=${task.cpus} ${row.id}.bam
-        if [[ ! \$(samtools view ${row.id}.bam | head -n 10) ]]; then
-            exit 1;
-        fi
-    """
-}
-
-
-/* 
-    Merge ID Bams by Strain
-*/
-process merge_bam {
-
-    tag { row.strain }
-
-    label 'md'
-    conda "bwa=0.7.17 sambamba=0.7.0"
-
-    input:
-        tuple strain, row, path(bam), path(bai), val(n_count)
-
-    output:
-        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
-
-    script:
-        if (n_count == 1)
-            """
-                mv ${bam} ${strain}.bam
-                mv ${bai} ${strain}.bam.bai
-            """
-        else
-            """
-                sambamba merge --nthreads=${task.cpus} --show-progress ${strain}.bam ${bam}
-                sambamba index --nthreads=${task.cpus} ${strain}.bam
-            """
-}
-
-process mark_dups {
-
-    tag { "${strain}" }
-
-    label 'lg'
-    publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
-    conda 'picard=2.21.3'
-
-    input:
-        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
-    output:
-        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
-        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
-        path "${strain}.duplicates.txt", emit: "markdups"
-
-    """
-        picard MarkDuplicates I=${strain}.in.bam \\
-                              O=${strain}.bam \\
-                              M=${strain}.duplicates.txt \\
-                              VALIDATION_STRINGENCY=SILENT \\
-                              REMOVE_DUPLICATES=false \\
-                              TAGGING_POLICY=All \\
-                              REMOVE_SEQUENCING_DUPLICATES=TRUE
-        sambamba index --nthreads=${task.cpus} ${strain}.bam
-    """
-}
-
-// process symlink_ref_strains {
-//     /*
-//         This process creates a link for any
-//         strain labeled as a 'reference strain'
-//         in a new reference folder.
-
-//         So output will be:
-//             all/ → All strains
-//             reference_strain/ → reference strains
-
-//         The use of symlinks saves on disk space.
-//     */
-//     tag { "${row.strain}" }
-
-//     executor 'local'
-//     when:
-//         row.reference_strain == "TRUE"
-//     input:
-//         tuple row, path("${row.strain}.bam"), path("${row.strain}.bam.bai")
-
-//     script:
-//         // check if outdir is abs. path
-//         outdir_path = file(params.output).exists() ? "${workflow.projectDir}/${params.outdir}" : params.outdir
-//     """
-//         mkdir -p ${outdir_path}/reference_strain/
-//         if [ ! -L ${outdir_path}/reference_strain/${row.strain}.bam ]; then
-//             ln -s ${outdir_path}/all/${row.strain}.bam ${outdir_path}/reference_strain/${row.strain}.bam
-//         fi;
-//         if [ ! -L ${outdir_path}/reference_strain/${row.strain}.bam.bai ]; then
-//             ln -s ${outdir_path}/all/${row.strain}.bam.bai ${outdir_path}/reference_strain/${row.strain}.bam.bai
-//         fi;
-//     """
-// }
 
 // Read sample sheet
 sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
@@ -295,4 +146,121 @@ workflow {
                               newLine: true,
                               storeDir: "${params.output}")
 
+}
+
+
+process summary {
+    
+    executor 'local'
+
+    //conda 'fd'
+    publishDir "${params.output}", mode: 'copy'
+    
+    input:
+        val(run)
+
+    output:
+        path("sample_sheet.tsv")
+        path("summary.txt")
+        path("software_versions.txt")
+
+    """
+        echo '''${log_summary()}''' > summary.txt
+        fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
+        cat ${params.sample_sheet} > sample_sheet.tsv
+    """
+
+}
+
+/* 
+    Alignment
+*/
+
+process alignment {
+
+    tag { row.id }
+    
+    label 'md'
+    container "andersenlab/alignment"
+
+    input:
+        tuple row, path(fq1), path(fq2)
+        
+    output:
+        tuple row, file("${row.id}.bam"), file("${row.id}.bam.bai")
+
+	script:
+		// Construct read group
+		RG = ["@RG",
+			  "ID:${row.id}",
+			  "SM:${row.strain}",
+			  "LB:${row.lb}",
+			  "PL:illumina"].join("\\t")
+
+    """
+        bwa mem -t ${task.cpus} -R '${RG}' ${params.reference} ${fq1} ${fq2} | \\
+        sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
+        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${row.id}.bam /dev/stdin
+        sambamba index --nthreads=${task.cpus} ${row.id}.bam
+        if [[ ! \$(samtools view ${row.id}.bam | head -n 10) ]]; then
+            exit 1;
+        fi
+    """
+}
+
+
+/* 
+    Merge ID Bams by Strain
+*/
+process merge_bam {
+
+    tag { row.strain }
+
+    label 'md'
+    container "andersenlab/alignment"
+
+    input:
+        tuple strain, row, path(bam), path(bai), val(n_count)
+
+    output:
+        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
+
+    script:
+        if (n_count == 1)
+            """
+                mv ${bam} ${strain}.bam
+                mv ${bai} ${strain}.bam.bai
+            """
+        else
+            """
+                sambamba merge --nthreads=${task.cpus} --show-progress ${strain}.bam ${bam}
+                sambamba index --nthreads=${task.cpus} ${strain}.bam
+            """
+}
+
+process mark_dups {
+
+    tag { "${strain}" }
+
+    label 'lg'
+    publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
+    container "andersenlab/alignment"
+
+    input:
+        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
+    output:
+        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
+        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
+        path "${strain}.duplicates.txt", emit: "markdups"
+
+    """
+        picard -Xmx${task.memory.toGiga()}g -Xms1g MarkDuplicates I=${strain}.in.bam \\
+                              O=${strain}.bam \\
+                              M=${strain}.duplicates.txt \\
+                              VALIDATION_STRINGENCY=SILENT \\
+                              REMOVE_DUPLICATES=false \\
+                              TAGGING_POLICY=All \\
+                              REMOVE_SEQUENCING_DUPLICATES=TRUE
+        sambamba index --nthreads=${task.cpus} ${strain}.bam
+    """
 }
