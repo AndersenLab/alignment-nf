@@ -260,7 +260,9 @@ process mark_dups {
                               VALIDATION_STRINGENCY=SILENT \\
                               REMOVE_DUPLICATES=false \\
                               TAGGING_POLICY=All \\
-                              REMOVE_SEQUENCING_DUPLICATES=TRUE
+                              REMOVE_SEQUENCING_DUPLICATES=TRUE \\
+                              SORTING_COLLECTION_SIZE_RATIO=0.1
+
         sambamba index --nthreads=${task.cpus} ${strain}.bam
     """
 }
