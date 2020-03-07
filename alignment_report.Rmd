@@ -1,0 +1,105 @@
+---
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    theme: null
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, echo=F, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(knitr)
+library(DT)
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, print=FALSE, verbose=TRUE)
+opts_chunk$set(results="asis")
+opts_chunk$set(cache=TRUE,cache.path="cache/")
+opts_chunk$set(fig.path="figure/",dev=c("png", "svg"))
+opts_chunk$set(debug = function(before, options, envir) {
+  if (!before) {
+    message(
+      paste(names(envir), as.list(envir),
+            sep = " = ", collapse = "\n"))
+  }
+})
+
+presentation <- theme(axis.text.x = element_text(size=14, face="bold", color="black"),
+                      axis.text.y = element_text(size=14, face="bold", color="black"),
+                      axis.title.x = element_text(size=18, face="bold", color="black", vjust=-1),
+                      axis.title.y = element_text(size=18, face="bold", color="black", vjust=2),
+                      strip.text.x = element_text(size=18, face="bold", color="black"),
+                      strip.text.y = element_text(size=18, face="bold", color="black"),
+                      panel.spacing = unit(0.50, "lines"),
+                      plot.margin  = unit(c(1,1,1,1), "cm"),
+                      plot.title   = element_text(size=24, face="bold",vjust=2),
+                      legend.position="none")
+
+
+```
+
+```{r load}
+try(setwd(dirname(rstudioapi::getActiveDocumentContext()$path)))
+RELEASE_FOLDER <- "alignment-20200307-debug"
+STRAIN_PATH <- glue::glue("{RELEASE_FOLDER}/_aggregate/multiqc/strain_data/")
+
+sample_sheet <- data.table::fread(glue::glue("{RELEASE_FOLDER}/sample_sheet.tsv"))
+
+total_strains <- length(unique(sample_sheet$strain))
+total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
+
+
+
+# Load coverage data
+mapped <- data.table::fread(fs::path_join(c(STRAIN_PATH, "mqc_samtools_alignment_plot_1.txt")))
+
+# Samtools stats
+samtools_stats <- data.table::fread(fs::path_join(c(STRAIN_PATH, "multiqc_samtools_stats.txt")))
+
+mapped[, percent_mapped := round(100*(Mapped / (Mapped + Unmapped)), 1)]
+names(mapped) <- c("Strain", "Mapped Reads", "Unmapped Reads", "Percent Mapped")
+
+```
+
+## Overview
+
+* __total strains__ - `r total_strains`
+* __sequenced libraries__ - `r total_sequenced_libraries`
+
+## Reads Mapped by Strain
+
+```{r reads_mapped_by_strain}
+datatable(mapped[order(-`Percent Mapped`),], options = list(pageLength = 50))
+data.table::fwrite(mapped, "data/mapped_reads.tsv")
+```
+
+Download [mapped_reads.tsv](data/mapped_reads.tsv)
+
+## Distribution of mapped read percent
+
+```{r mapped_read_percent}
+
+median_mapped <- median(mapped$`Percent Mapped`, na.rm = TRUE)
+
+ggplot(mapped) + 
+  geom_histogram(aes(x = `Percent Mapped`), fill = "#A9A9A9") +
+  geom_vline(aes(xintercept = median_mapped), width = 5, color = "red") +
+  theme_bw() +
+  labs(x = "Reads Mapped (%)", y = "Count") +
+  presentation + 
+  labs(caption = glue::glue("Median % mapped = {median_mapped}"))
+
+```
+
+```{r mapped_read_percent}
+
+median_mapped <- median(mapped$`Percent Mapped`, na.rm = TRUE)
+
+ggplot(mapped) + 
+  geom_histogram(aes(x = `Percent Mapped`), fill = "#A9A9A9") +
+  geom_vline(aes(xintercept = median_mapped), width = 5, color = "red") +
+  theme_bw() +
+  labs(x = "Reads Mapped (%)", y = "Count") +
+  presentation + 
+  labs(caption = glue::glue("Median % mapped = {median_mapped}"))
+
+```
