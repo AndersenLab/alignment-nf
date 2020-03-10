@@ -153,7 +153,7 @@ process summary {
     
     executor 'local'
 
-    //conda 'fd'
+    conda 'fd-find'
     publishDir "${params.output}", mode: 'copy'
     
     input:
