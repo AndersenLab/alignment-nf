@@ -187,7 +187,7 @@ seq_folder=MAF-JU1249-20170425
 >&2 echo ${seq_folder}
 prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
 
-echo -e "JU1249\tJU1259MAF\tJU1249MAF\t${prefix}/JU1249_1P.fq.gz\t${prefix}/JU1249_2P.fq.gz\t${seq_folder}" >> ${fq_sheet}
+echo -e "JU1249\tJU1249MAF\tJU1249MAF\t${prefix}/JU1249_1P.fq.gz\t${prefix}/JU1249_2P.fq.gz\t${seq_folder}" >> ${fq_sheet}
 
 #=====================#
 # 170511-NU-HiSeq4000 #
@@ -246,18 +246,65 @@ awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
     SM = a[1];
     ID = $1;
     gsub("_1P.fq.gz", "", ID);
-    split($0, b, "_");
-    LB = b[2];
+    LB = a[1]
+    gsub("$", "_180405", LB);
     print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
 }' | sed -n '1~2p' >> ${fq_sheet}
+
+
+#============================#
+#    20190614_fromNUSeq     #
+#============================#
+#
+seq_folder=20190614_fromNUSeq
+>&2 echo ${seq_folder}
+prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
+ls $prefix/*.gz -1 | xargs -n1 basename |\
+awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
+    fq1 = $1;
+    fq2 = $1;
+    gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    split($0, a, "_");
+    SM = a[1];
+    ID = $1;
+    gsub("_1P.fq.gz", "_190614", ID);
+    LB = a[1]
+    gsub("$", "_190614", LB);
+    print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
+}' | sed -n '1~2p' >> ${fq_sheet}
+
+
+
+#============================#
+#    20190904_fromNovogene     #
+#============================#
+#
+seq_folder=20190904_fromNovogene
+>&2 echo ${seq_folder}
+prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
+ls $prefix/*.gz -1 | xargs -n1 basename |\
+awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
+    fq1 = $1;
+    fq2 = $1;
+    gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    split($0, a, "_");
+    SM = a[1];
+    ID = $1;
+    gsub("_1P.fq.gz", "_190904", ID);
+    LB = a[1]
+    gsub("$", "_190904", LB);
+    print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
+}' | sed -n '1~2p' >> ${fq_sheet}
+
+
 
 if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
     >&2 echo "There are duplicate IDs in the sample sheet. Please review 'inventory.error'"
     cat ${fq_sheet} | sort > ../inventory.error
     exit 1
 else
-    cat ${fq_sheet} | sort > WI_FASTQs.tsv
-    echo "$(cat WI_FASTQs.tsv | wc -l) records. FASTQ Inventory saved to WI_FASTQ.tsv"
+    cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' > WI_sample_sheet.tsv
+    echo "$(cat WI_sample_sheet.tsv | wc -l) records. FASTQ Inventory saved to WI_sample_sheet.tsv"
     echo "Integrating WI data and constructing sample sheet..."
 fi
 
@@ -269,13 +316,9 @@ profiled_tmp=`mktemp`
 cat fastq_meta.tsv  | cut -f 17 > ${profiled_tmp}
 # Fetch fastq info for new FASTQs only
 tmp=`mktemp`
-cut -f 4,5 WI_FASTQs.tsv | cut -f 4,5 WI_FASTQs.tsv | tr '\t' '\n' | fgrep -f ${profiled_tmp} -v > ${tmp}
+cut -f 4,5 WI_sample_sheet.tsv | cut -f 4,5 WI_sample_sheet.tsv | tr '\t' '\n' | fgrep -f ${profiled_tmp} -v > ${tmp}
 parallel -j 2 --verbose ./sc fq-meta --absolute {} :::: ${tmp} >> fastq_meta.tsv
 
 
-#======================#
-# Compile Sample Sheet #
-#======================#
-Rscript integrate_wi_data.R
 
 
