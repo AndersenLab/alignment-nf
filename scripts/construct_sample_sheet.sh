@@ -303,8 +303,8 @@ if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
     cat ${fq_sheet} | sort > ../inventory.error
     exit 1
 else
-    cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' > WI_FASTQs.tsv
-    echo "$(cat WI_FASTQs.tsv | wc -l) records. FASTQ Inventory saved to WI_FASTQ.tsv"
+    cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' > WI_sample_sheet.tsv
+    echo "$(cat WI_sample_sheet.tsv | wc -l) records. FASTQ Inventory saved to WI_sample_sheet.tsv"
     echo "Integrating WI data and constructing sample sheet..."
 fi
 
@@ -316,7 +316,7 @@ profiled_tmp=`mktemp`
 cat fastq_meta.tsv  | cut -f 17 > ${profiled_tmp}
 # Fetch fastq info for new FASTQs only
 tmp=`mktemp`
-cut -f 4,5 WI_FASTQs.tsv | cut -f 4,5 WI_FASTQs.tsv | tr '\t' '\n' | fgrep -f ${profiled_tmp} -v > ${tmp}
+cut -f 4,5 WI_sample_sheet.tsv | cut -f 4,5 WI_sample_sheet.tsv | tr '\t' '\n' | fgrep -f ${profiled_tmp} -v > ${tmp}
 parallel -j 2 --verbose ./sc fq-meta --absolute {} :::: ${tmp} >> fastq_meta.tsv
 
 
