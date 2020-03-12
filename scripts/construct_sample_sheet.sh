@@ -267,7 +267,7 @@ awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
     split($0, a, "_");
     SM = a[1];
     ID = $1;
-    gsub("_1P.fq.gz", "", ID);
+    gsub("_1P.fq.gz", "_190614", ID);
     LB = a[1]
     gsub("$", "_190614", LB);
     print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
@@ -303,7 +303,7 @@ if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
     cat ${fq_sheet} | sort > ../inventory.error
     exit 1
 else
-    cat ${fq_sheet} | sort > WI_FASTQs.tsv
+    cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' > WI_FASTQs.tsv
     echo "$(cat WI_FASTQs.tsv | wc -l) records. FASTQ Inventory saved to WI_FASTQ.tsv"
     echo "Integrating WI data and constructing sample sheet..."
 fi
@@ -320,9 +320,5 @@ cut -f 4,5 WI_FASTQs.tsv | cut -f 4,5 WI_FASTQs.tsv | tr '\t' '\n' | fgrep -f ${
 parallel -j 2 --verbose ./sc fq-meta --absolute {} :::: ${tmp} >> fastq_meta.tsv
 
 
-#======================#
-# Compile Sample Sheet #
-#======================#
-Rscript integrate_wi_data.R
 
 
