@@ -252,6 +252,50 @@ awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
 }' | sed -n '1~2p' >> ${fq_sheet}
 
 
+#============================#
+#    20190614_fromNUSeq     #
+#============================#
+#
+seq_folder=20190614_fromNUSeq
+>&2 echo ${seq_folder}
+prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
+ls $prefix/*.gz -1 | xargs -n1 basename |\
+awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
+    fq1 = $1;
+    fq2 = $1;
+    gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    split($0, a, "_");
+    SM = a[1];
+    ID = $1;
+    gsub("_1P.fq.gz", "", ID);
+    LB = a[1]
+    gsub("$", "_190614", LB);
+    print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
+}' | sed -n '1~2p' >> ${fq_sheet}
+
+
+
+#============================#
+#    20190904_fromNovogene     #
+#============================#
+#
+seq_folder=20190904_fromNovogene
+>&2 echo ${seq_folder}
+prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
+ls $prefix/*.gz -1 | xargs -n1 basename |\
+awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
+    fq1 = $1;
+    fq2 = $1;
+    gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    split($0, a, "_");
+    SM = a[1];
+    ID = $1;
+    gsub("_1P.fq.gz", "_190904", ID);
+    LB = a[1]
+    gsub("$", "_190904", LB);
+    print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
+}' | sed -n '1~2p' >> ${fq_sheet}
+
 
 
 if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
