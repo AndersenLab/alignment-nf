@@ -246,10 +246,13 @@ awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
     SM = a[1];
     ID = $1;
     gsub("_1P.fq.gz", "", ID);
-    split($0, b, "_");
-    LB = b[2];
+    LB = a[1]
+    gsub("$", "_180405", LB);
     print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
 }' | sed -n '1~2p' >> ${fq_sheet}
+
+
+
 
 if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
     >&2 echo "There are duplicate IDs in the sample sheet. Please review 'inventory.error'"
