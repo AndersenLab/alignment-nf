@@ -187,7 +187,7 @@ seq_folder=MAF-JU1249-20170425
 >&2 echo ${seq_folder}
 prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
 
-echo -e "JU1249\tJU1259MAF\tJU1249MAF\t${prefix}/JU1249_1P.fq.gz\t${prefix}/JU1249_2P.fq.gz\t${seq_folder}" >> ${fq_sheet}
+echo -e "JU1249\tJU1249MAF\tJU1249MAF\t${prefix}/JU1249_1P.fq.gz\t${prefix}/JU1249_2P.fq.gz\t${seq_folder}" >> ${fq_sheet}
 
 #=====================#
 # 170511-NU-HiSeq4000 #
