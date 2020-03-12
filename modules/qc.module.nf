@@ -8,7 +8,7 @@ process coverage {
     tag {"${grouping} -> ${name}" }
 
     publishDir "${params.output}/coverage/${grouping}", mode: 'copy'
-    conda { System.properties['os.name'] != "Mac OS X" ? 'bioconda::mosdepth=0.2.6' : "" }
+    conda { System.properties['os.name'] != "Mac OS X" ? 'bioconda::mosdepth=0.2.9' : "" }
     label 'md'
 
     input:
