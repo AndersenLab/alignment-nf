@@ -303,7 +303,9 @@ if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
     cat ${fq_sheet} | sort > ../inventory.error
     exit 1
 else
-    cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' > WI_sample_sheet.tsv
+    cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' |
+    sed -e '/ECA252/d' -e '/ECA253/d' -e '/ECA254/d' -e '/ECA339/d' -e '/LSJ1/d' > WI_sample_sheet.tsv
+    
     echo "$(cat WI_sample_sheet.tsv | wc -l) records. FASTQ Inventory saved to WI_sample_sheet.tsv"
     echo "Integrating WI data and constructing sample sheet..."
 fi
