@@ -22,11 +22,11 @@ awk -v prefix=${prefix} -v seq_folder=${seq_folder} '{
     fq1 = $1;
     fq2 = $1;
     gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    ID = $1;
     gsub("_1P.fq.gz", "", ID);
     line = $0;
     gsub("CB4856_CGC_3", "CB4856", $0);
     gsub("CB4857_CGC", "CB4857", $0);
-    ID = $1;
     split($0, a, "_");
     SM = a[2];
     gsub("CB4857", "ECA249", SM);
