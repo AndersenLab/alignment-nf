@@ -38,7 +38,7 @@ presentation <- theme(axis.text.x = element_text(size=14, face="bold", color="bl
 ```
 
 ```{r load}
-try(setwd(dirname(rstudioapi::getActiveDocumentContext()$path)))
+#try(setwd(dirname(rstudioapi::getActiveDocumentContext()$path)))
 RELEASE_FOLDER <- "alignment-20200307-debug"
 STRAIN_PATH <- glue::glue("{RELEASE_FOLDER}/_aggregate/multiqc/strain_data/")
 
@@ -50,13 +50,25 @@ total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
 
 
 # Load coverage data
-mapped <- data.table::fread(fs::path_join(c(STRAIN_PATH, "mqc_samtools_alignment_plot_1.txt")))
+mapped_cov <- data.table::fread(fs::path_join(c(STRAIN_PATH, "mqc_mosdepth-coverage-per-contig_1.txt"))) 
+   
+mapped_cov$coverage <- rowMeans(mapped_cov[,c("I", "II", "III", "IV", "V")], na.rm=TRUE)
 
 # Samtools stats
-samtools_stats <- data.table::fread(fs::path_join(c(STRAIN_PATH, "multiqc_samtools_stats.txt")))
+mapped_stats <- data.table::fread(fs::path_join(c(STRAIN_PATH, "multiqc_samtools_stats.txt"))) 
 
-mapped[, percent_mapped := round(100*(Mapped / (Mapped + Unmapped)), 1)]
-names(mapped) <- c("Strain", "Mapped Reads", "Unmapped Reads", "Percent Mapped")
+mapped <- dplyr::select(mapped_stats, Sample, raw_total_sequences, reads_mapped, reads_mapped_percent) %>% 
+    dplyr::mutate(raw_total_sequences = round(raw_total_sequences/1000000, 2)) %>%
+    dplyr::mutate(reads_mapped = round(reads_mapped/1000000, 2)) %>% 
+    dplyr::mutate(reads_mapped_percent = round(reads_mapped_percent, 1)) %>%
+    dplyr::inner_join(select(mapped_cov, Sample, coverage)) %>% 
+    dplyr::mutate(coverage = round(coverage)) %>% 
+    dplyr::arrange(Sample)
+
+names(mapped) <- c("Strain", "Total Reads (M)", "Mapped Reads (M)", "Percent Mapped", "Coverage (x)")
+
+median_mapped_reads = median(mapped$'Mapped Reads (M)')
+median_coverage = median(mapped$'Coverage (x)')
 
 ```
 
@@ -64,15 +76,17 @@ names(mapped) <- c("Strain", "Mapped Reads", "Unmapped Reads", "Percent Mapped")
 
 * __total strains__ - `r total_strains`
 * __sequenced libraries__ - `r total_sequenced_libraries`
+* __median mapped reads__ - `r median_mapped_reads`
+* __median coverage__ - `r median_coverage`
 
 ## Reads Mapped by Strain
 
 ```{r reads_mapped_by_strain}
-datatable(mapped[order(-`Percent Mapped`),], options = list(pageLength = 50))
-data.table::fwrite(mapped, "data/mapped_reads.tsv")
+datatable(mapped, options = list(pageLength = 50))
+data.table::fwrite(mapped, "alignment_stats.tsv")
 ```
 
-Download [mapped_reads.tsv](data/mapped_reads.tsv)
+Download [mapped_reads.tsv](data/alignment_stats.tsv)
 
 ## Distribution of mapped read percent
 
