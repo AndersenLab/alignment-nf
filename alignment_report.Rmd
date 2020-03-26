@@ -16,11 +16,11 @@ opts_chunk$set(results="asis")
 opts_chunk$set(cache=TRUE,cache.path="cache/")
 opts_chunk$set(fig.path="figure/",dev=c("png", "svg"))
 opts_chunk$set(debug = function(before, options, envir) {
-  if (!before) {
-    message(
-      paste(names(envir), as.list(envir),
-            sep = " = ", collapse = "\n"))
-  }
+    if (!before) {
+        message(
+            paste(names(envir), as.list(envir),
+                  sep = " = ", collapse = "\n"))
+    }
 })
 
 presentation <- theme(axis.text.x = element_text(size=14, face="bold", color="black"),
@@ -38,11 +38,9 @@ presentation <- theme(axis.text.x = element_text(size=14, face="bold", color="bl
 ```
 
 ```{r load}
-#try(setwd(dirname(rstudioapi::getActiveDocumentContext()$path)))
-RELEASE_FOLDER <- "alignment-20200307-debug"
-STRAIN_PATH <- glue::glue("{RELEASE_FOLDER}/_aggregate/multiqc/strain_data/")
+STRAIN_PATH <- glue::glue("_aggregate/multiqc/strain_data/")
 
-sample_sheet <- data.table::fread(glue::glue("{RELEASE_FOLDER}/sample_sheet.tsv"))
+sample_sheet <- data.table::fread(glue::glue("sample_sheet.tsv"))
 
 total_strains <- length(unique(sample_sheet$strain))
 total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
@@ -51,10 +49,10 @@ total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
 
 # Load coverage data
 mapped_cov <- data.table::fread(fs::path_join(c(STRAIN_PATH, "mqc_mosdepth-coverage-per-contig_1.txt"))) 
-   
+
 mapped_cov$coverage <- rowMeans(mapped_cov[,c("I", "II", "III", "IV", "V")], na.rm=TRUE)
 
-# Samtools stats
+# Load Samtools stats
 mapped_stats <- data.table::fread(fs::path_join(c(STRAIN_PATH, "multiqc_samtools_stats.txt"))) 
 
 mapped <- dplyr::select(mapped_stats, Sample, raw_total_sequences, reads_mapped, reads_mapped_percent) %>% 
@@ -65,41 +63,58 @@ mapped <- dplyr::select(mapped_stats, Sample, raw_total_sequences, reads_mapped,
     dplyr::mutate(coverage = round(coverage)) %>% 
     dplyr::arrange(Sample)
 
-names(mapped) <- c("Strain", "Total Reads (M)", "Mapped Reads (M)", "Percent Mapped", "Coverage (x)")
 
-median_mapped_reads = median(mapped$'Mapped Reads (M)')
-median_coverage = median(mapped$'Coverage (x)')
-
+median_table <- data.frame(raw_total_sequences = median(mapped$raw_total_sequences), 
+                           reads_mapped = median(mapped$reads_mapped), 
+                           reads_mapped_percent = median(mapped$reads_mapped_percent),
+                           coverage = median(mapped$coverage)) 
 ```
 
 ## Overview
 
-* __total strains__ - `r total_strains`
-* __sequenced libraries__ - `r total_sequenced_libraries`
-* __median mapped reads__ - `r median_mapped_reads`
-* __median coverage__ - `r median_coverage`
+* __Total strains__ - `r total_strains`
+* __Sequenced libraries__ - `r total_sequenced_libraries`
+* __Median mapped reads__ - `r round((median_table$reads_mapped)) ` million
+* __Median coverage__ - `r median_table$coverage`
 
 ## Reads Mapped by Strain
 
 ```{r reads_mapped_by_strain}
-datatable(mapped, options = list(pageLength = 50))
+datatable(mapped, colnames=c("Strain", "Total Reads (M)", "Mapped Reads (M)", "Percent Mapped", "Coverage (x)"), options = list(pageLength = 50))
+
 data.table::fwrite(mapped, "alignment_stats.tsv")
 ```
 
 Download [mapped_reads.tsv](data/alignment_stats.tsv)
 
-## Distribution of mapped read percent
+## Distribution of stats
 
-```{r mapped_read_percent}
+```{r mapped_read_percent, fig.width=8, fig.height=6}
 
-median_mapped <- median(mapped$`Percent Mapped`, na.rm = TRUE)
+mapped_long <- mapped %>% select(-Sample) %>% gather() %>% 
+    mutate(key_f = factor(key, levels = c("raw_total_sequences", "reads_mapped", "reads_mapped_percent", "coverage")))
 
-ggplot(mapped) + 
-  geom_histogram(aes(x = `Percent Mapped`), fill = "#A9A9A9") +
-  geom_vline(aes(xintercept = median_mapped), width = 5, color = "red") +
-  theme_bw() +
-  labs(x = "Reads Mapped (%)", y = "Count") +
-  presentation + 
-  labs(caption = glue::glue("Median % mapped = {median_mapped}"))
+median_long <- median_table %>% gather() %>% 
+    mutate(key_f = factor(key, levels = c("raw_total_sequences", "reads_mapped", "reads_mapped_percent", "coverage"))) %>% 
+    mutate(value_2dig = format(round(value,2), nsmall=2))
+
+
+ggplot(mapped_long) + 
+    geom_histogram(aes(x = value), fill = "#A9A9A9") +
+    facet_wrap(~key_f, scales = "free",     labeller = labeller(
+        key_f = c(    "raw_total_sequences" = "Total Reads (M)",
+                      "reads_mapped" = "Mapped Reads (M)",
+                      "reads_mapped_percent" = "Percent Mapped",
+                      "coverage" = "Coverage (x)"))) +
+    geom_vline(data=median_long, aes(xintercept=value), color = "red") +
+    geom_text(data=median_long, aes(x = Inf, y = Inf,
+                                    label=paste0("median ", value_2dig),
+                                    vjust = 1.6, hjust = 1.6),
+              colour="red",
+              text=element_text(size=16)) +
+    xlab("") + ylab("Number of strains") +
+    theme_bw() +
+    presentation 
+
 
 ```
