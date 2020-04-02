@@ -38,9 +38,9 @@ presentation <- theme(axis.text.x = element_text(size=14, face="bold", color="bl
 ```
 
 ```{r load}
-STRAIN_PATH <- glue::glue("_aggregate/multiqc/strain_data/")
+STRAIN_PATH <- "_aggregate/multiqc/strain_data/"
 
-sample_sheet <- data.table::fread(glue::glue("sample_sheet.tsv"))
+sample_sheet <- data.table::fread("sample_sheet.tsv")
 
 total_strains <- length(unique(sample_sheet$strain))
 total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
@@ -50,7 +50,7 @@ total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
 # Load coverage data
 mapped_cov <- data.table::fread(fs::path_join(c(STRAIN_PATH, "mqc_mosdepth-coverage-per-contig_1.txt"))) 
 
-mapped_cov$coverage <- rowMeans(mapped_cov[,c("I", "II", "III", "IV", "V")], na.rm=TRUE)
+mapped_cov$coverage <- rowMeans(mapped_cov[,c("I", "II", "III", "IV", "V", "X")], na.rm=TRUE)
 
 # Load Samtools stats
 mapped_stats <- data.table::fread(fs::path_join(c(STRAIN_PATH, "multiqc_samtools_stats.txt"))) 
@@ -87,7 +87,7 @@ data.table::fwrite(mapped, "alignment_stats.tsv")
 
 Download [mapped_reads.tsv](data/alignment_stats.tsv)
 
-## Distribution of stats
+## Alignment Metrics
 
 ```{r mapped_read_percent, fig.width=8, fig.height=6}
 
