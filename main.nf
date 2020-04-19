@@ -14,7 +14,7 @@ nextflow.preview.dsl=2
 date = new Date().format( 'yyyyMMdd' )
 params.debug = false
 params.email = ""
-params.reference = "${workflow.projectDir}/WS245/WS245.fa.gz"
+params.reference = ""
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
 
 // Debug
@@ -26,7 +26,7 @@ if (params.debug.toString() == "true") {
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
-    params.sample_sheet = "sample_sheet.tsv"
+    params.sample_sheet = "${workflow.projectDir}/WI_sample_sheet.tsv"
     params.fq_prefix = "";
 }
 
@@ -34,7 +34,7 @@ if (params.debug.toString() == "true") {
 // Prefix this version when running
 // e.g.
 // NXF_VER=20.01.0 nextflow run ...
-assert System.getenv("NXF_VER") == "20.01.0"
+//assert System.getenv("NXF_VER") == "20.01.0"
 
 def log_summary() {
 /*
@@ -141,7 +141,7 @@ workflow {
                                     stats_strain.out).collect() | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
-    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "bam/${row.strain}","bam/${row.strain}.bai"].join("\t") } \
+    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${params.output}/bam/${row.strain}.bam","${params.output}/bam/${row.strain}.bam.bai"].join("\t") } \
                  .collectFile(name: 'strain_summary.tsv',
                               newLine: true,
                               storeDir: "${params.output}")
@@ -153,7 +153,7 @@ process summary {
     
     executor 'local'
 
-    conda 'fd-find'
+    // conda 'fd-find'
     publishDir "${params.output}", mode: 'copy'
     
     input:
@@ -181,7 +181,7 @@ process alignment {
     tag { row.id }
     
     label 'md'
-    container "andersenlab/alignment"
+    // container "andersenlab/alignment"
 
     input:
         tuple row, path(fq1), path(fq2)
@@ -216,8 +216,8 @@ process merge_bam {
 
     tag { row.strain }
 
-    label 'md'
-    container "andersenlab/alignment"
+    label 'lg'
+    // container "andersenlab/alignment"
 
     input:
         tuple strain, row, path(bam), path(bai), val(n_count)
@@ -244,7 +244,7 @@ process mark_dups {
 
     label 'lg'
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
-    container "andersenlab/alignment"
+    // container "andersenlab/alignment"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
