@@ -130,12 +130,29 @@ process aggregate_kmer {
 }
 
 
+process validatebam {
+
+    tag {"${grouping} -> ${name}" }
+
+    label 'sm'
+
+    input:
+        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+    output:
+        tuple grouping, path("${name}.validatesamfile.txt")
+
+    """
+        picard ValidateSamFile I=in.bam MODE=SUMMARY > ${name}.validatesamfile.txt
+    """
+}
+
+
 /* MULTI-QC */
 process multiqc {
 
     tag { "multiqc" }
 
-    tag 'md'
+    tag 'lg'
     publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'
     conda 'multiqc=1.8'
 
