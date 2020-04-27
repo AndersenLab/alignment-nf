@@ -298,15 +298,65 @@ awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
 
 
 
+#============================#
+#    20200417_fromNovogene     #
+#============================#
+#
+seq_folder=20200417_fromNovogene
+>&2 echo ${seq_folder}
+prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
+ls $prefix/*.gz -1 | xargs -n1 basename |\
+awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
+    fq1 = $1;
+    fq2 = $1;
+    gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    split($0, a, "_");
+    SM = a[1];
+    ID = a[1];
+    gsub("$", "_200417", ID);
+    LB = a[1]
+    gsub("$", "_200417", LB);
+    print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
+}' | sed -n '1~2p' >> ${fq_sheet}
+
+
+
+#============================#
+#    20200421_fromNovogene     #
+#============================#
+#
+
+# manually change TWN_2542 and TWN_2803 to TWN2542 and TWN2803 in "processed" folder
+seq_folder=20200421_fromNovogene
+>&2 echo ${seq_folder}
+prefix=${fastq_dir}/WI/dna/processed/${seq_folder}
+ls $prefix/*.gz -1 | xargs -n1 basename |\
+awk  -v prefix=$prefix -v seq_folder=${seq_folder} '{
+    fq1 = $1;
+    fq2 = $1;
+    gsub("1P.fq.gz", "2P.fq.gz", fq2);
+    split($0, a, "_");
+    SM = a[1];
+    ID = a[1];
+    gsub("$", "_200421", ID);
+    LB = a[1]
+    gsub("$", "_200421", LB);
+    print SM"\t"ID"\t"LB"\t"prefix"/"fq1"\t"prefix"/"fq2"\t"seq_folder
+}' | sed -n '1~2p' >> ${fq_sheet}
+
+
+
+
+
 if [[ $(cut -f 2 ${fq_sheet} | sort | uniq -c | grep -v '1 ') ]]; then
     >&2 echo "There are duplicate IDs in the sample sheet. Please review 'inventory.error'"
     cat ${fq_sheet} | sort > ../inventory.error
     exit 1
 else
     cat ${fq_sheet} | sort | sed '1 i\strain\tid\tlb\tfq1\tfq2\tseq_folder' |
-    sed -e '/ECA252/d' -e '/ECA253/d' -e '/ECA254/d' -e '/ECA339/d' -e '/LSJ1/d' > WI_sample_sheet.tsv
+    sed -e '/ECA252/d' -e '/ECA253/d' -e '/ECA254/d' -e '/ECA339/d' -e '/LSJ1/d' > sample_sheet.tsv
     
-    echo "$(cat WI_sample_sheet.tsv | wc -l) records. FASTQ Inventory saved to WI_sample_sheet.tsv"
+    echo "$(cat sample_sheet.tsv | wc -l) records. FASTQ Inventory saved to sample_sheet.tsv"
     echo "Integrating WI data and constructing sample sheet..."
 fi
 
@@ -318,7 +368,7 @@ profiled_tmp=`mktemp`
 cat fastq_meta.tsv  | cut -f 17 > ${profiled_tmp}
 # Fetch fastq info for new FASTQs only
 tmp=`mktemp`
-cut -f 4,5 WI_sample_sheet.tsv | cut -f 4,5 WI_sample_sheet.tsv | tr '\t' '\n' | fgrep -f ${profiled_tmp} -v > ${tmp}
+cut -f 4,5 sample_sheet.tsv | cut -f 4,5 sample_sheet.tsv | tr '\t' '\n' | fgrep -f ${profiled_tmp} -v > ${tmp}
 parallel -j 2 --verbose ./sc fq-meta --absolute {} :::: ${tmp} >> fastq_meta.tsv
 
 
