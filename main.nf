@@ -14,7 +14,7 @@ nextflow.preview.dsl=2
 date = new Date().format( 'yyyyMMdd' )
 params.debug = false
 params.email = ""
-params.reference = "${workflow.projectDir}/WS245/WS245.fa.gz"
+params.reference = ""
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
 
 // Debug
@@ -26,7 +26,7 @@ if (params.debug.toString() == "true") {
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
-    params.sample_sheet = "sample_sheet.tsv"
+    params.sample_sheet = "${workflow.projectDir}/sample_sheet.tsv"
     params.fq_prefix = "";
 }
 
@@ -97,6 +97,8 @@ include flagstat as flagstat_strain from './modules/qc.module.nf' params(params)
 include kmer_counting from './modules/qc.module.nf' params(params)
 include aggregate_kmer from './modules/qc.module.nf' params(params)
 
+include validatebam as validatebam_strain from './modules/qc.module.nf' params(params)
+
 include multiqc as multiqc_id from './modules/qc.module.nf' params(output: params.output, grouping: "id")
 include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
@@ -133,15 +135,16 @@ workflow {
 
     /* Strain Level Stats and multiqc */
     mark_dups.out.bams.map { row, bam, bai -> ["strain", row.strain, bam, bai] } | \
-        (coverage_strain & idxstats_strain & flagstat_strain & stats_strain)
+        (coverage_strain & idxstats_strain & flagstat_strain & stats_strain & validatebam_strain)
 
     mark_dups.out.markdups.concat(coverage_strain.out,
                                     idxstats_strain.out,
                                     flagstat_strain.out,
-                                    stats_strain.out).collect() | multiqc_strain                 
+                                    stats_strain.out,
+                                    validatebam_strain.out).collect() | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
-    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "bam/${row.strain}","bam/${row.strain}.bai"].join("\t") } \
+    mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${params.output}/bam/${row.strain}.bam","${params.output}/bam/${row.strain}.bam.bai"].join("\t") } \
                  .collectFile(name: 'strain_summary.tsv',
                               newLine: true,
                               storeDir: "${params.output}")
@@ -216,7 +219,7 @@ process merge_bam {
 
     tag { row.strain }
 
-    label 'md'
+    label 'lg'
     container "andersenlab/alignment"
 
     input:
