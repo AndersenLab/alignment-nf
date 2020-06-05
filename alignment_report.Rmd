@@ -2,7 +2,7 @@
 date: "`r Sys.Date()`"
 output: 
   html_document: 
-    theme: null
+    theme: yeti
 editor_options: 
   chunk_output_type: console
 ---
@@ -11,6 +11,8 @@ editor_options:
 library(tidyverse)
 library(knitr)
 library(DT)
+
+try(setwd(dirname(rstudioapi::getActiveDocumentContext()$path)), silent=TRUE)
 opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, print=FALSE, verbose=TRUE)
 opts_chunk$set(results="asis")
 opts_chunk$set(cache=TRUE,cache.path="cache/")
@@ -34,7 +36,6 @@ presentation <- theme(axis.text.x = element_text(size=14, face="bold", color="bl
                       plot.title   = element_text(size=24, face="bold",vjust=2),
                       legend.position="none")
 
-
 ```
 
 ```{r load}
@@ -44,8 +45,6 @@ sample_sheet <- data.table::fread("sample_sheet.tsv")
 
 total_strains <- length(unique(sample_sheet$strain))
 total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
-
-
 
 # Load coverage data
 mapped_cov <- data.table::fread(fs::path_join(c(STRAIN_PATH, "mqc_mosdepth-coverage-per-contig_1.txt"))) 
@@ -80,12 +79,15 @@ median_table <- data.frame(raw_total_sequences = median(mapped$raw_total_sequenc
 ## Reads Mapped by Strain
 
 ```{r reads_mapped_by_strain}
-datatable(mapped, colnames=c("Strain", "Total Reads (M)", "Mapped Reads (M)", "Percent Mapped", "Coverage (x)"), options = list(pageLength = 50))
+DT::datatable(mapped,
+              colnames=c("Strain", "Total Reads (M)", "Mapped Reads (M)", "Percent Mapped", "Coverage (x)"),
+              options = list(pageLength = 5000, scrollY = 400),
+              extensions = c("Scroller"))
 
-data.table::fwrite(mapped, "alignment_stats.tsv")
+data.table::fwrite(mapped, "reads_mapped_by_strain.tsv", sep = "\t")
 ```
 
-Download [mapped_reads.tsv](data/alignment_stats.tsv)
+Download [reads_mapped_by_strain.tsv](reads_mapped_by_strain.tsv)
 
 ## Alignment Metrics
 
