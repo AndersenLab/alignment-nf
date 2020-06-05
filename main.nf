@@ -34,7 +34,7 @@ if (params.debug.toString() == "true") {
 // Prefix this version when running
 // e.g.
 // NXF_VER=20.01.0 nextflow run ...
-assert System.getenv("NXF_VER") == "20.01.0"
+//assert System.getenv("NXF_VER") == "20.01.0"
 
 def log_summary() {
 /*
@@ -156,7 +156,7 @@ process summary {
     
     executor 'local'
 
-    conda 'fd-find'
+    // conda 'fd-find'
     publishDir "${params.output}", mode: 'copy'
     
     input:
@@ -184,7 +184,7 @@ process alignment {
     tag { row.id }
     
     label 'md'
-    container "andersenlab/alignment"
+    // container "andersenlab/alignment"
 
     input:
         tuple row, path(fq1), path(fq2)
@@ -220,7 +220,7 @@ process merge_bam {
     tag { row.strain }
 
     label 'lg'
-    container "andersenlab/alignment"
+    // container "andersenlab/alignment"
 
     input:
         tuple strain, row, path(bam), path(bai), val(n_count)
@@ -247,7 +247,7 @@ process mark_dups {
 
     label 'lg'
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
-    container "andersenlab/alignment"
+    // container "andersenlab/alignment"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")

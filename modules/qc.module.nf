@@ -8,7 +8,7 @@ process coverage {
     tag {"${grouping} -> ${name}" }
 
     publishDir "${params.output}/coverage/${grouping}", mode: 'copy'
-    conda { System.properties['os.name'] != "Mac OS X" ? 'bioconda::mosdepth=0.2.9' : "" }
+    // conda { System.properties['os.name'] != "Mac OS X" ? 'bioconda::mosdepth=0.2.9' : "" }
     label 'md'
 
     input:
@@ -89,7 +89,7 @@ process flagstat {
 process kmer_counting {
 
     label 'sm'
-    conda 'fastq-tools=0.8'
+    // conda 'fastq-tools=0.8'
     tag { "${row.strain}" }
     when params.kmers.toString() == "true"
 
@@ -154,7 +154,7 @@ process multiqc {
 
     tag 'lg'
     publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'
-    conda 'multiqc=1.8'
+    // conda 'multiqc=1.8'
 
     input:
         file("*")
