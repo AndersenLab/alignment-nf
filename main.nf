@@ -26,7 +26,7 @@ if (params.debug.toString() == "true") {
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
-    params.sample_sheet = "${workflow.projectDir}/sample_sheet.tsv"
+    params.sample_sheet = "${workflow.launchDir}/sample_sheet.tsv"
     params.fq_prefix = "";
 }
 
