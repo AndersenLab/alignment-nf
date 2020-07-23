@@ -91,10 +91,12 @@ out += """
 
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
 """
-log.info(out)
-
 out
 }
+
+
+log.info(log_summary())
+
 
 if (params.help) {
     log_summary()
