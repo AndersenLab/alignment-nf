@@ -14,21 +14,40 @@ nextflow.preview.dsl=2
 date = new Date().format( 'yyyyMMdd' )
 params.debug = false
 params.email = ""
-params.reference = ""
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
+params.species == ""
+
 
 // Debug
 if (params.debug.toString() == "true") {
     params.output = "alignment-${date}-debug"
     params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
+    params.species = "ce"
 
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
     params.sample_sheet = "${workflow.launchDir}/sample_sheet.tsv"
-    params.fq_prefix = "";
+    params.fq_prefix = ""
 }
+
+
+// Define which genome to map to
+// Genome location see config
+if (params.species == "ce") {
+    params.reference = "${params.reference_ce}"
+} else if (params.species == "cb") {
+    params.reference = "${params.reference_cb}"
+} else if (params.species == "ct") {
+    params.reference = "${params.reference_ct}"
+} else if (params.species == null) {
+    params.reference = ""
+    println "Please specify a species: ce cb ct with option --species"
+    exit 1
+}
+
+
 
 // For now, this pipeline requires NXF_VER 20.01.0
 // Prefix this version when running
@@ -57,24 +76,27 @@ if (params.debug.toString() == "true") {
 }
 
 out += """
-    parameters              description                    Set/Default
-    ==========              ===========                    ========================
-    --debug                 Set to 'true' to test          ${params.debug}
-    --sample_sheet          sample_sheet (see help)        ${params.sample_sheet}
-    --fq_prefix             fastq prefix                   ${params.fq_prefix}
-    --kmers                 count kmers                    ${params.kmers}
-    --reference             Reference Genome (w/ .gz)      ${params.reference}
-    --output                Location for output            ${params.output}
-    --email                 Email to be sent results       ${params.email}
+    parameters              description                                 Set/Default
+    ==========              ===========                                 ========================
+    --debug                 Set to 'true' to test                       ${params.debug}
+    --sample_sheet          sample_sheet (see help)                     ${params.sample_sheet}
+    --species               species to map: 'ce', 'cb' or 'ct'          ${params.species}
+    --fq_prefix             fastq prefix if not in sample_sheet         ${params.fq_prefix}
+    --kmers                 count kmers                                 ${params.kmers}
+    --reference             Reference Genome (w/ .gz)                   ${params.reference}
+    --output                Location for output                         ${params.output}
+    --email                 Email to be sent results                    ${params.email}
 
     username                                               ${"whoami".execute().in.text}
 
     HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
 """
-log.info(out)
-
 out
 }
+
+
+log.info(log_summary())
+
 
 if (params.help) {
     log_summary()
