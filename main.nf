@@ -20,6 +20,11 @@ params.species == ""
 
 // Debug
 if (params.debug.toString() == "true") {
+    println """
+
+        *** Using debug mode ***
+
+    """
     params.output = "alignment-${date}-debug"
     params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
@@ -42,9 +47,17 @@ if (params.species == "ce") {
 } else if (params.species == "ct") {
     params.reference = "${params.reference_ct}"
 } else if (params.species == null) {
-    params.reference = ""
-    println "Please specify a species: ce cb ct with option --species"
-    exit 1
+    if (params.reference == null) {
+        if (params.help) {
+        } else { 
+        println """
+
+        Please specify a species: ce cb ct with option --species, or a ref genome with --reference"
+
+        """
+        exit 1
+        }
+    }
 }
 
 
@@ -61,7 +74,7 @@ def log_summary() {
 */
 
 out = '''
-
+                                                            
              ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
              ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
              ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
@@ -69,13 +82,12 @@ out = '''
             ▐  ▌ ▝▄ ▗▟▄ ▝▙▜ ▐ ▐ ▐▐▐ ▝▙▞ ▐ ▐  ▝▄     ▐ ▐▌▐
                          ▖▐
                          ▝▘
-'''
+''' + """
 
-if (params.debug.toString() == "true") {
-    out += "\n\n============================= DEBUG =============================\n\n"
-}
+nextflow main.nf -profile quest --debug=true
 
-out += """
+nextflow main.nf -profile quest --sample_sheet=name_of_sample_sheet.tsv --species=ce
+
     parameters              description                                 Set/Default
     ==========              ===========                                 ========================
     --debug                 Set to 'true' to test                       ${params.debug}
@@ -83,7 +95,7 @@ out += """
     --species               species to map: 'ce', 'cb' or 'ct'          ${params.species}
     --fq_prefix             fastq prefix if not in sample_sheet         ${params.fq_prefix}
     --kmers                 count kmers                                 ${params.kmers}
-    --reference             Reference Genome (w/ .gz)                   ${params.reference}
+    --reference             to use in place of default ce cb ct .fa.gz  ${params.reference}
     --output                Location for output                         ${params.output}
     --email                 Email to be sent results                    ${params.email}
 
@@ -99,7 +111,6 @@ log.info(log_summary())
 
 
 if (params.help) {
-    log_summary()
     exit 1
 }
 
