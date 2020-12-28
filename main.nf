@@ -12,14 +12,11 @@ nextflow.preview.dsl=2
 */
 
 date = new Date().format( 'yyyyMMdd' )
-params.debug = false
-params.email = ""
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
-params.species == ""
 
 
 // Debug
-if (params.debug.toString() == "true") {
+if (params.debug) {
     println """
 
         *** Using debug mode ***
@@ -83,10 +80,10 @@ out = '''
                          ▖▐
                          ▝▘
 ''' + """
+To run the pipeline:
 
-nextflow main.nf -profile quest --debug=true
-
-nextflow main.nf -profile quest --sample_sheet=name_of_sample_sheet.tsv --species=ce
+nextflow main.nf --debug
+nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
 
     parameters              description                                 Set/Default
     ==========              ===========                                 ========================
@@ -97,11 +94,9 @@ nextflow main.nf -profile quest --sample_sheet=name_of_sample_sheet.tsv --specie
     --kmers                 count kmers                                 ${params.kmers}
     --reference             to use in place of default ce cb ct .fa.gz  ${params.reference}
     --output                Location for output                         ${params.output}
-    --email                 Email to be sent results                    ${params.email}
 
-    username                                               ${"whoami".execute().in.text}
+    username                                                            ${"whoami".execute().in.text}
 
-    HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
 """
 out
 }

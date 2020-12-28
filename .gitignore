@@ -5,3 +5,4 @@ bam_debug
 work/*
 Alignment*/
 pipeline_info/*
+sample_sheet.tsv*
