@@ -87,13 +87,13 @@ nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
 
     parameters              description                                 Set/Default
     ==========              ===========                                 ========================
-    --debug                 Set to 'true' to test                       ${params.debug}
-    --sample_sheet          sample_sheet (see help)                     ${params.sample_sheet}
-    --species               species to map: 'ce', 'cb' or 'ct'          ${params.species}
-    --fq_prefix             fastq prefix if not in sample_sheet         ${params.fq_prefix}
-    --kmers                 count kmers                                 ${params.kmers}
-    --reference             to use in place of default ce cb ct .fa.gz  ${params.reference}
-    --output                Location for output                         ${params.output}
+    --debug                 Use --debug to indicate debug mode          ${params.debug}
+    --sample_sheet          See test_data/sample_sheet for example      ${params.sample_sheet}
+    --species               Species to map: 'ce', 'cb' or 'ct'          ${params.species}
+    --fq_prefix             Path to fastq if not in sample_sheet        ${params.fq_prefix}
+    --kmers                 Whether to count kmers                      ${params.kmers}
+    --reference             genome.fasta.gz to use in place of default  ${params.reference}
+    --output                Output folder name.                         ${params.output}
 
     username                                                            ${"whoami".execute().in.text}
 
