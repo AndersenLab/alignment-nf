@@ -25,23 +25,23 @@ if (params.debug) {
     params.output = "alignment-${date}-debug"
     params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
-    params.species = "ce"
+    params.species = "c_elegans"
 
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
     params.sample_sheet = "${workflow.launchDir}/sample_sheet.tsv"
-    params.fq_prefix = ""
+    params.fq_prefix = "/projects/b1059/data/${params.species}/WI/fastq/dna/"
 }
 
 
 // Define which genome to map to
 // Genome location see config
-if (params.species == "ce") {
+if (params.species == "c_elegans") {
     params.reference = "${params.reference_ce}"
-} else if (params.species == "cb") {
+} else if (params.species == "c_briggsae") {
     params.reference = "${params.reference_cb}"
-} else if (params.species == "ct") {
+} else if (params.species == "c_tropicalis") {
     params.reference = "${params.reference_ct}"
 } else if (params.species == null) {
     if (params.reference == null) {
@@ -49,7 +49,7 @@ if (params.species == "ce") {
         } else { 
         println """
 
-        Please specify a species: ce cb ct with option --species, or a ref genome with --reference"
+        Please specify a species: c_elegans c_brigssae c_tropicalis with option --species, or a ref genome with --reference"
 
         """
         exit 1
@@ -89,7 +89,8 @@ nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
     ==========              ===========                                 ========================
     --debug                 Use --debug to indicate debug mode          ${params.debug}
     --sample_sheet          See test_data/sample_sheet for example      ${params.sample_sheet}
-    --species               Species to map: 'ce', 'cb' or 'ct'          ${params.species}
+    --species               Species to map: 'c_elegans', 'c_briggsae'   ${params.species}
+                              or 'c_tropicalis'                         
     --fq_prefix             Path to fastq if not in sample_sheet        ${params.fq_prefix}
     --kmers                 Whether to count kmers                      ${params.kmers}
     --reference             genome.fasta.gz to use in place of default  ${params.reference}
