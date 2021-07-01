@@ -160,8 +160,7 @@ process multiqc {
         file("*")
 
     output:
-        path("${params.grouping}_multiqc_report.html")
-        path("${params.grouping}_data/*")
+        tuple path("${params.grouping}_multiqc_report.html"), path("${params.grouping}_data/*")
 
     """
         multiqc . --data-format tsv \\
