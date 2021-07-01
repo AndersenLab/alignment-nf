@@ -1,0 +1,136 @@
+---
+title: "Pool stats for all and low coverage"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+* Species is already checked during trimming step
+
+* In "sample_sheet.tsv"" (input for alignment-nf), there may be multiple replicate libraries ("id") for the same strain ("strain"). Here will output stats for all replicates combined.
+
+* Output **stats_strain_all.tsv** contains stats for all strains, with all replicates combined.
+
+* Output **stats_strains_with_low_values.tsv** contains strains with:
+
+    + either (1) total raw reads < 10000, not enough to do anything; 
+    + or (2) reads mapping rate < 70%, which indicates wrong species, or lib quality issue. 
+    + or (3) average coverage across main chromosomes < 14x, which is not enough for variant calling. 
+
+* Output **sample_sheet_for_seq_sheet.tsv** is formatted to be put on to Google sequencing sheet, which contains a column of coverage. 
+
+<br>
+
+
+```{r include=FALSE}
+library(tidyverse)
+library(plotly)
+
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+
+```{r}
+# Change this chunk below before knitting
+trim_sample_sheet = read.delim("sample_sheet.tsv", stringsAsFactors=FALSE)
+
+gatk_sample_sheet = read.delim("strain_summary.tsv", stringsAsFactors=FALSE, header = F) %>% arrange(V1)
+# contigs to include for calculating average read coverage, which is used for removing low coverage samples from next step
+contig_for_coverage=c("I","II","III","IV","V")
+```
+
+
+
+```{r}
+####### coverage
+coverage <- read.delim("_aggregate/multiqc/strain_data/mqc_mosdepth-coverage-per-contig_1.txt", stringsAsFactors=FALSE)
+
+coverage$avg_coverage = rowMeans(coverage[,contig_for_coverage], na.rm=TRUE)
+
+coverage <- select(coverage, Sample, avg_coverage)
+
+####### percent reads mapped
+samtools_stats_strain <- read.delim("_aggregate/multiqc/strain_data/multiqc_samtools_stats.txt", stringsAsFactors=FALSE)
+
+low_input = filter(samtools_stats_strain, raw_total_sequences < 10000) %>% select(Sample)
+print(paste0("strains with too few reads (< 10000): ", low_input$Sample))
+
+samtools_stats_strain <-
+    select(samtools_stats_strain, Sample, raw_total_sequences, reads_mapped_percent, reads_mapped)
+
+
+####### arrange output for stats
+
+ss1 <- trim_sample_sheet  %>% 
+    add_count(strain) %>% rename(num_replicates = n) %>% 
+    select(strain, num_replicates) %>% unique() %>%
+    inner_join(samtools_stats_strain, by=c("strain"="Sample")) 
+
+ss <-  inner_join(ss1, coverage, by=c("strain"="Sample")) %>% rename(raw_total_reads = raw_total_sequences) 
+
+write.table(ss, "stats_strain_all.tsv", sep="\t", quote=F, row.names=F, col.names=T)
+```
+
+
+### plot to see cutoff for percent reads mapped and average coverage 
+If a strain had most reads mapped (> 90%, indicating correct species), and coverage is a bit low (between 10x ~ 15x), probably still worth keeping for variant calling.
+
+```{r, fig.width=6, fig.height=4}
+p <- ss %>% filter(reads_mapped > 10000) %>% 
+    ggplot() + geom_point(aes(x=reads_mapped, y=avg_coverage, plotly_label=strain), alpha=0.5, size=1) +
+    scale_colour_manual(values=c("black", "red")) +
+    scale_x_log10() + xlab("Reads mapped") + ylab("Average coverage") 
+
+ggplotly(p)
+
+
+ss %>% filter(reads_mapped > 10000) %>% 
+    ggplot() + geom_point(aes(x=reads_mapped_percent, y=avg_coverage), alpha=0.5, size=1) +
+    scale_colour_manual(values=c("black", "red")) +
+    scale_y_log10() + xlab("Percent reads mapped") + ylab("Average coverage")
+
+
+plot_ly(filter(ss, reads_mapped > 10000), x= ~log10(reads_mapped), y=~avg_coverage, z=~reads_mapped_percent, marker=list(size=2), colors=c("black","red"), mode="markers", type="scatter3d", text = ~strain)
+
+```
+
+
+## Low coverage strains
+
+```{r}
+# write out low coverage strains
+low_map_strain = filter(ss, reads_mapped_percent < 70) %>% select(strain)
+
+low_cov_strain = filter(ss, avg_coverage < 14) %>% select(strain)
+
+all=full_join(low_map_strain, low_cov_strain) %>% full_join(low_input, by=c("strain"="Sample"))
+
+print(paste0("low reads input: ", nrow(low_input), " strains"))
+print(paste0("low percent reads mapped: ", nrow(low_map_strain), " strains"))
+print(paste0("low average coverage: ", nrow(low_cov_strain), " strains"))
+
+ss_low = inner_join(ss, all) %>% arrange(strain)
+
+write.table(ss_low, "stats_strains_with_low_values.tsv", sep="\t", quote=F, row.names=F, col.names=T)
+
+DT::datatable(ss_low)
+
+```
+
+
+```{r}
+# write out the sample sheet for sequencing google sheet 
+inner_join(gatk_sample_sheet, select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F, col.names = F, row.names = F, sep="\t")
+
+# write out the sample sheet for sequencing google sheet - remove low coverage strains
+inner_join(gatk_sample_sheet, select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
+    dplyr::filter(avg_coverage > 13, reads_mapped_percent > 90) %>%
+    write.table("sample_sheet_for_seq_sheet.tsv", quote=F, col.names = F, row.names = F, sep="\t")
+
+
+```
+
+
+```{r}
+sessionInfo()
+```
