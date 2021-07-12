@@ -9,7 +9,7 @@ nextflow main.nf --debug
 ### Typical use for new fastq:
 
 ```
-nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
+nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=c_elegans
 ```
 
 ### Parameters
