@@ -14,6 +14,19 @@ nextflow.preview.dsl=2
 date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
 params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
+params.species = "c_elegans"
+
+// set project and build defaults for CE, CB, and CT, can always change with argument.
+if(params.species == "c_elegans") {
+    params.project="PRJNA13758"
+    params.ws_build="WS276"
+} else if(params.species == "c_briggsae") {
+    params.project="QX1430_nanopore"
+    params.ws_build="Feb2020"
+} else if(params.species == "c_tropicalis") {
+    params.project="NIC58_nanopore"
+    params.ws_build="June2021"
+}
 
 // Debug
 if (params.debug) {
@@ -25,7 +38,6 @@ if (params.debug) {
     params.output = "alignment-${date}-debug"
     params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
-    params.species = "c_elegans"
 
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
@@ -37,12 +49,15 @@ if (params.debug) {
 
 // Define which genome to map to
 // Genome location see config
-if (params.species == "c_elegans") {
-    params.reference = "${params.reference_ce}"
-} else if (params.species == "c_briggsae") {
-    params.reference = "${params.reference_cb}"
-} else if (params.species == "c_tropicalis") {
-    params.reference = "${params.reference_ct}"
+// if (params.species == "c_elegans") {
+//     params.reference = "${params.reference_ce}"
+// } else if (params.species == "c_briggsae") {
+//     params.reference = "${params.reference_cb}"
+// } else if (params.species == "c_tropicalis") {
+//     params.reference = "${params.reference_ct}"
+// genomes are all named the same now
+if(params.species == "c_elegans" | params.species == "c_briggsae" | params.species == "c_tropicalis") {
+    params.reference = "/projects/b1059/data/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
 } else if (params.species == null) {
     if (params.reference == null) {
         if (params.help) {
