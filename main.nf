@@ -16,18 +16,6 @@ parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software
 params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
 
-// set project and build defaults for CE, CB, and CT, can always change with argument.
-if(params.species == "c_elegans") {
-    params.project="PRJNA13758"
-    params.ws_build="WS276"
-} else if(params.species == "c_briggsae") {
-    params.project="QX1430_nanopore"
-    params.ws_build="Feb2020"
-} else if(params.species == "c_tropicalis") {
-    params.project="NIC58_nanopore"
-    params.ws_build="June2021"
-}
-
 // Debug
 if (params.debug) {
     println """
@@ -44,6 +32,18 @@ if (params.debug) {
     params.output = "alignment-${date}"
     params.sample_sheet = "${workflow.launchDir}/sample_sheet.tsv"
     params.fq_prefix = "/projects/b1059/data/${params.species}/WI/fastq/dna/"
+}
+
+// set project and build defaults for CE, CB, and CT, can always change with argument.
+if(params.species == "c_elegans") {
+    params.project="PRJNA13758"
+    params.ws_build="WS276"
+} else if(params.species == "c_briggsae") {
+    params.project="QX1410_nanopore"
+    params.ws_build="Feb2020"
+} else if(params.species == "c_tropicalis") {
+    params.project="NIC58_nanopore"
+    params.ws_build="June2021"
 }
 
 
