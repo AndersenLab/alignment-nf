@@ -25,7 +25,7 @@ if (params.debug) {
 
     """
     params.output = "alignment-${date}-debug"
-    params.sample_sheet = "${workflow.projectDir}/test_data/blob_sample.tsv"
+    params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
 
 } else {
