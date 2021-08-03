@@ -113,6 +113,8 @@ ss_low = inner_join(ss, all) %>% arrange(strain)
 
 write.table(ss_low, "stats_strains_with_low_values.tsv", sep="\t", quote=F, row.names=F, col.names=T)
 
+write.table(ss_low %>% dplyr::select(strain), "strains_with_low_values.tsv", sep="\t", quote=F, row.names=F, col.names=F)
+
 DT::datatable(ss_low)
 
 ```
