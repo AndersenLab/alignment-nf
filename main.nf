@@ -15,6 +15,7 @@ date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
 params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
+params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
 
 // Debug
 if (params.debug) {
@@ -24,7 +25,7 @@ if (params.debug) {
 
     """
     params.output = "alignment-${date}-debug"
-    params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
+    params.sample_sheet = "${workflow.projectDir}/test_data/blob_sample.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
 
 } else {
@@ -198,6 +199,10 @@ workflow {
         .combine(strain_summary)
         .combine(summary.out) | coverage_report
 
+    // blobtools
+    coverage_report.out.low_strains
+        .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
+
 }
 
 
@@ -317,6 +322,10 @@ process mark_dups {
     """
 }
 
+/* 
+    Report for low coverage strains
+*/
+
 process coverage_report {
 
     conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
@@ -331,6 +340,7 @@ process coverage_report {
     output:
         path("low_map_cov_for_seq_sheet.html")
         path("low_map_cov_for_seq_sheet.Rmd")
+        path "strains_with_low_values.tsv", emit: "low_strains"
         path("*.tsv")
 
 
@@ -345,5 +355,159 @@ process coverage_report {
 
     """
 
+}
+
+/* 
+    Blobtools on low coverage strains
+*/
+
+process blob_align {
+
+    cpus 12
+
+    conda "/projects/b1059/software/conda_envs/blobtools"
+
+    input:
+        val(STRAIN)
+
+    output:
+        tuple val(STRAIN), path("Unmapped.out.mate1.step1.fq"), path("Unmapped.out.mate2.step1.fq")
+
+
+    """
+    # get fastq pair
+    st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    p1=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
+    p2=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
+
+    # change ref to unzip
+    ref=`echo ${params.reference} | sed 's/.gz//'`
+
+
+    STAR \\
+    --runThreadN 12 \\
+    --runMode genomeGenerate \\
+    --limitGenomeGenerateRAM 600000000000 \\
+    --genomeDir . \\
+    --genomeFastaFiles \$ref \\
+    --genomeSAindexNbases 12 
+    STAR \\
+    --runThreadN 12 \\
+    --genomeDir . \\
+    --outSAMtype BAM Unsorted SortedByCoordinate \\
+    --outReadsUnmapped Fastx \\
+    --twopassMode Basic \\
+    --readFilesCommand zcat \\
+    --readFilesIn ${params.fq_prefix}/\$p2 ${params.fq_prefix}/\$p1 
+
+    mv Unmapped.out.mate1 Unmapped.out.mate1.step1.fq
+    mv Unmapped.out.mate2 Unmapped.out.mate2.step1.fq
+
+
+    """
 
 }
+
+process blob_assemble {
+
+    memory '160 GB'
+    cpus 24
+
+    conda "/projects/b1059/software/conda_envs/blobtools"
+
+    input:
+        tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
+
+    output:
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
+
+
+    """
+    spades.py --pe1-1 Unmapped_mate1_step1.fq  --pe1-2 Unmapped_mate2_step1.fq -t 24 -m 160 --only-assembler -o UM_assembly
+
+    STAR \\
+    --runThreadN 24 \\
+    --runMode genomeGenerate \\
+    --limitGenomeGenerateRAM 600000000000 \\
+    --genomeDir . \\
+    --genomeFastaFiles UM_assembly/scaffolds.fasta \\
+    --genomeSAindexNbases 5 \\
+
+    STAR \\
+    --runThreadN 24 \\
+    --genomeDir . \\
+    --outSAMtype BAM Unsorted SortedByCoordinate \\
+    --outReadsUnmapped Fastx \\
+    --twopassMode Basic \\
+    --readFilesIn Unmapped_mate1_step1.fq Unmapped_mate2_step1.fq
+
+    """ 
+}
+
+process blob_unmapped {
+
+    cpus 4
+
+    conda "/projects/b1059/software/conda_envs/samtools"
+
+    input:
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
+
+    output:
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
+
+
+    """
+    samtools index Aligned.sortedByCoord.out.bam
+
+    """ 
+}
+
+process blob_blast {
+
+    cpus 4
+
+    conda "/projects/b1059/software/conda_envs/blast"
+
+    input:
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
+
+    output:
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+
+
+    """
+    blastn \\
+    -task megablast \\
+    -query UM_assembly/scaffolds.fasta \\
+    -db ${params.ncbi}/nt \\
+    -outfmt '6 qseqid staxids bitscore std' \\
+    -max_target_seqs 1 \\
+    -max_hsps 1 \\
+    -num_threads 24 \\
+    -evalue 1e-25 \\
+    -out assembly.1e25.megablast.out
+
+    """ 
+}
+
+process blob_plot {
+
+    publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
+
+    conda "/projects/b1059/software/conda_envs/blobtools"
+
+    input:
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+
+    output:
+        tuple file("*.png"), file("*blobplot.stats.txt")
+
+    """
+    st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp
+    blobtools plot  -i \$st.blobDB.json  -o \$st.plot
+
+    """ 
+}
+

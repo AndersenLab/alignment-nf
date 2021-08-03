@@ -1,0 +1,3 @@
+strain	id	lb	fq1	fq2	seq_folder
+AB1	BGI1-RET2-AB1	RET2	BGI1-RET2-AB1-trim-1P.fq.gz	BGI1-RET2-AB1-trim-2P.fq.gz	original_wi_set
+QX1213	BGI2-RET5-QX1213	RET5	BGI2-RET5-QX1213-trim-1P.fq.gz	BGI2-RET5-QX1213-trim-2P.fq.gz	original_wi_set
