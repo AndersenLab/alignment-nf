@@ -113,6 +113,8 @@ nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
     --output                Output folder name.                         ${params.output}
 
     username                                                            ${"whoami".execute().in.text}
+    ----------------------------------------------------------------------------------------------
+    Git info: $workflow.repository - $workflow.revision [$workflow.commitId]
 
 """
 out
