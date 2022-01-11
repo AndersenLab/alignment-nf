@@ -14,23 +14,14 @@
 FROM continuumio/miniconda
 MAINTAINER Katie Evans <kathryn.evans@northwestern.edu>
 
-RUN conda install bioconda::bwa=0.7.17
-RUN conda install bioconda::sambamba
-RUN conda install bioconda::samtools=1.9
-# RUN conda install bamtools=2.5.1
-RUN conda install bioconda::picard=2.20.6
-# RUN conda install bcftools=1.9
-# RUN conda install fastqc=0.11.8
-# RUN conda install telseq=0.0.2
-RUN conda install bioconda::multiqc
-RUN conda install r::r=3.6.0
-RUN conda install bioconda::mosdepth=0.2.6
-RUN conda install bioconda::star=2.7.9a
-RUN conda install bioconda::spades
-RUN conda install bioconda::blobtools
-RUN conda install bioconda::blast
+COPY conda.yml .
+RUN \
+   conda env update -n root -f conda.yml \
+&& conda clean -a
 
 RUN Rscript -e "install.packages('tidyverse', dependencies = TRUE, repos = 'http://cran.us.r-project.org')"
 RUN Rscript -e "install.packages('plotly', dependencies = TRUE, repos = 'http://cran.us.r-project.org')"
 
-RUN apt-get --allow-releaseinfo-change update && apt-get install -y procps  
+RUN apt-get --allow-releaseinfo-change update && \
+	apt-get install -y procps && \
+	rm -rf /var/lib/apt/lists/*

@@ -150,6 +150,9 @@ process validatebam {
 /* MULTI-QC */
 process multiqc {
 
+    // this process uses the multiqc container generated in trim-fq-nf
+    container 'andersenlab/multiqc'
+
     tag { "multiqc" }
 
     tag 'lg'
