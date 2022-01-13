@@ -330,7 +330,8 @@ process mark_dups {
 
 process coverage_report {
 
-    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    //conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    container 'andersenlab/r_packages' // does this work?
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
@@ -367,7 +368,7 @@ process blob_align {
 
     cpus 12
 
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    //conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
         val(STRAIN)
@@ -415,7 +416,7 @@ process blob_assemble {
     memory '160 GB'
     cpus 24
 
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    //conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
         tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
@@ -450,7 +451,7 @@ process blob_unmapped {
 
     cpus 4
 
-    conda "/projects/b1059/software/conda_envs/samtools"
+    //conda "/projects/b1059/software/conda_envs/samtools"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
@@ -469,7 +470,7 @@ process blob_blast {
 
     cpus 4
 
-    conda "/projects/b1059/software/conda_envs/blast"
+    //conda "/projects/b1059/software/conda_envs/blast"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
@@ -497,7 +498,7 @@ process blob_plot {
 
     publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
 
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    //conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
