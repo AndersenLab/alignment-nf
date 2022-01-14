@@ -198,8 +198,8 @@ workflow {
 
     // summarize coverage
     multiqc_strain.out
-        .combine(strain_summary)
-        .combine(summary.out) | coverage_report
+        .combine(strain_summary) | coverage_report
+        // .combine(summary.out) 
 
     // blobtools
     coverage_report.out.low_strains

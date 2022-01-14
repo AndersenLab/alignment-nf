@@ -36,6 +36,7 @@ RUN conda install bioconda::blobtools
 RUN conda install bioconda::blast
 RUN conda install bioconda::fastp=0.20.0
 RUN conda install -c conda-forge fd-find
+RUN conda install bioconda::sambamba
 
 
 RUN apt-get --allow-releaseinfo-change update && \
