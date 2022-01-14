@@ -42,7 +42,14 @@ module load python/anaconda3.6
 source activate /projects/b1059/software/conda_envs/nf20_env
 ```
 
-* Currently only runs on Quest with conda environments installed at `/projects/b1059/software/conda_envs/`
+* Docker - this pipeline uses three separate docker images: 1) `andersenlab/alignment` which is generated as part of this repo (`env/align.Dockerfile`) and 2) `andersenlab/multiqc` which is generated as part of the [trim-fq-nf](https://github.com/AndersenLab/trim-fq-nf) repo. Check out the [dry guide](http://andersenlab.org/dry-guide/2021-12-01/pipeline-docker/) for more info. This pipeline also uses  `andersenlab/r_packages` container for all R work, which is hosted and generated [separately](https://github.com/AndersenLab/dockerfile/tree/master/r_packages).
+    - If you are on QUEST, you can load docker (actually singularity) with:
+
+```
+module load singularity
+```
+
+**Note: As of 2022-01-01, the conda environments that used to host this pipeline will no longer be maintained**
 
 
 # Usage

@@ -13,7 +13,7 @@ nextflow.preview.dsl=2
 
 date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
-params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
+// params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
 params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
 
@@ -158,7 +158,7 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
-    summary(Channel.from("run"))
+    // summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -331,7 +331,7 @@ process mark_dups {
 process coverage_report {
 
     //conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
-    container 'andersenlab/r_packages' // does this work?
+    container 'andersenlab/r_packages:v0.5' // does this work?
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
