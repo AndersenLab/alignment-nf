@@ -22,9 +22,8 @@ output: html_document
 
 
 ```{r include=FALSE}
-library(dplyr)
+library(tidyverse)
 library(plotly)
-library(ggplot2)
 
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 ```
@@ -48,29 +47,26 @@ coverage <- read.delim("_aggregate/multiqc/strain_data/mqc_mosdepth-coverage-per
 
 coverage$avg_coverage = rowMeans(coverage[,contig_for_coverage], na.rm=TRUE)
 
-coverage <- dplyr::select(coverage, Sample, avg_coverage)
+coverage <- select(coverage, Sample, avg_coverage)
 
 ####### percent reads mapped
 samtools_stats_strain <- read.delim("_aggregate/multiqc/strain_data/multiqc_samtools_stats.txt", stringsAsFactors=FALSE)
 
-low_input = dplyr::filter(samtools_stats_strain, raw_total_sequences < 10000) %>% select(Sample)
+low_input = filter(samtools_stats_strain, raw_total_sequences < 10000) %>% select(Sample)
 print(paste0("strains with too few reads (< 10000): ", low_input$Sample))
 
 samtools_stats_strain <-
-    dplyr::select(samtools_stats_strain, Sample, raw_total_sequences, reads_mapped_percent, reads_mapped)
+    select(samtools_stats_strain, Sample, raw_total_sequences, reads_mapped_percent, reads_mapped)
 
 
 ####### arrange output for stats
 
 ss1 <- trim_sample_sheet  %>% 
-    dplyr::add_count(strain) %>% 
-    dplyr::rename(num_replicates = n) %>% 
-    dplyr::select(strain, num_replicates) %>% 
-    unique() %>%
-    dplyr::inner_join(samtools_stats_strain, by=c("strain"="Sample")) 
+    add_count(strain) %>% rename(num_replicates = n) %>% 
+    select(strain, num_replicates) %>% unique() %>%
+    inner_join(samtools_stats_strain, by=c("strain"="Sample")) 
 
-ss <-  dplyr::inner_join(ss1, coverage, by=c("strain"="Sample")) %>% 
-    dplyr::rename(raw_total_reads = raw_total_sequences) 
+ss <-  inner_join(ss1, coverage, by=c("strain"="Sample")) %>% rename(raw_total_reads = raw_total_sequences) 
 
 write.table(ss, "stats_strain_all.tsv", sep="\t", quote=F, row.names=F, col.names=T)
 ```
@@ -80,28 +76,21 @@ write.table(ss, "stats_strain_all.tsv", sep="\t", quote=F, row.names=F, col.name
 If a strain had most reads mapped (> 90%, indicating correct species), and coverage is a bit low (between 10x ~ 15x), probably still worth keeping for variant calling.
 
 ```{r, fig.width=6, fig.height=4}
-p <- ss %>% 
-    dplyr::filter(reads_mapped > 10000) %>% 
-    ggplot2::ggplot() + 
-    ggplot2::geom_point(aes(x=reads_mapped, y=avg_coverage, plotly_label=strain), alpha=0.5, size=1) +
-    ggplot2::scale_colour_manual(values=c("black", "red")) +
-    ggplot2::scale_x_log10() + 
-    ggplot2::xlab("Reads mapped") + 
-    ggplot2::ylab("Average coverage") 
+p <- ss %>% filter(reads_mapped > 10000) %>% 
+    ggplot() + geom_point(aes(x=reads_mapped, y=avg_coverage, plotly_label=strain), alpha=0.5, size=1) +
+    scale_colour_manual(values=c("black", "red")) +
+    scale_x_log10() + xlab("Reads mapped") + ylab("Average coverage") 
 
-plotly::ggplotly(p)
+ggplotly(p)
 
 
-ss %>% dplyr::filter(reads_mapped > 10000) %>% 
-    ggplot2::ggplot() + 
-    ggplot2::geom_point(aes(x=reads_mapped_percent, y=avg_coverage), alpha=0.5, size=1) +
-    ggplot2::scale_colour_manual(values=c("black", "red")) +
-    ggplot2::scale_y_log10() + 
-    ggplot2::xlab("Percent reads mapped") + 
-    ggplot2::ylab("Average coverage")
+ss %>% filter(reads_mapped > 10000) %>% 
+    ggplot() + geom_point(aes(x=reads_mapped_percent, y=avg_coverage), alpha=0.5, size=1) +
+    scale_colour_manual(values=c("black", "red")) +
+    scale_y_log10() + xlab("Percent reads mapped") + ylab("Average coverage")
 
 
-plotly::plot_ly(dplyr::filter(ss, reads_mapped > 10000), x= ~log10(reads_mapped), y=~avg_coverage, z=~reads_mapped_percent, marker=list(size=2), colors=c("black","red"), mode="markers", type="scatter3d", text = ~strain)
+plot_ly(filter(ss, reads_mapped > 10000), x= ~log10(reads_mapped), y=~avg_coverage, z=~reads_mapped_percent, marker=list(size=2), colors=c("black","red"), mode="markers", type="scatter3d", text = ~strain)
 
 ```
 
@@ -110,21 +99,17 @@ plotly::plot_ly(dplyr::filter(ss, reads_mapped > 10000), x= ~log10(reads_mapped)
 
 ```{r}
 # write out low coverage strains
-low_map_strain = dplyr::filter(ss, reads_mapped_percent < 70) %>% 
-    dplyr::select(strain)
+low_map_strain = filter(ss, reads_mapped_percent < 70) %>% select(strain)
 
-low_cov_strain = dplyr::filter(ss, avg_coverage < 14) %>% 
-    dplyr::select(strain)
+low_cov_strain = filter(ss, avg_coverage < 14) %>% select(strain)
 
-all = dplyr::full_join(low_map_strain, low_cov_strain) %>% 
-    dplyr::full_join(low_input, by=c("strain"="Sample"))
+all=full_join(low_map_strain, low_cov_strain) %>% full_join(low_input, by=c("strain"="Sample"))
 
 print(paste0("low reads input: ", nrow(low_input), " strains"))
 print(paste0("low percent reads mapped: ", nrow(low_map_strain), " strains"))
 print(paste0("low average coverage: ", nrow(low_cov_strain), " strains"))
 
-ss_low = dplyr::inner_join(ss, all) %>% 
-    dplyr::arrange(strain)
+ss_low = inner_join(ss, all) %>% arrange(strain)
 
 write.table(ss_low, "stats_strains_with_low_values.tsv", sep="\t", quote=F, row.names=F, col.names=T)
 
@@ -137,10 +122,10 @@ DT::datatable(ss_low)
 
 ```{r}
 # write out the sample sheet for sequencing google sheet 
-dplyr::inner_join(gatk_sample_sheet, dplyr::select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F, col.names = F, row.names = F, sep="\t")
+inner_join(gatk_sample_sheet, select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F, col.names = F, row.names = F, sep="\t")
 
 # write out the sample sheet for sequencing google sheet - remove low coverage strains
-dplyr::inner_join(gatk_sample_sheet, dplyr::select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
+inner_join(gatk_sample_sheet, select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
     dplyr::filter(avg_coverage > 13, reads_mapped_percent > 90) %>%
     write.table("sample_sheet_for_seq_sheet.tsv", quote=F, col.names = F, row.names = F, sep="\t")
 

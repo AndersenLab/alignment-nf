@@ -150,9 +150,6 @@ process validatebam {
 /* MULTI-QC */
 process multiqc {
 
-    // this process uses the multiqc container generated in trim-fq-nf
-    container 'ewels/multiqc' // the andersen one still doesn't work? great
-
     tag { "multiqc" }
 
     tag 'lg'
@@ -167,7 +164,7 @@ process multiqc {
 
     """
         multiqc . --data-format tsv \\
-                  --config multiqc_config.yaml \\
+                  --config ${workflow.projectDir}/scripts/multiqc_config.yaml \\
                   --title ${params.grouping} \\
                   --flat
         # mv data folder to reduce size

@@ -13,7 +13,7 @@ nextflow.preview.dsl=2
 
 date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
-// params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
+params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
 params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
 
@@ -158,7 +158,7 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
-    // summary(Channel.from("run"))
+    summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -178,8 +178,7 @@ workflow {
 
     coverage_id.out.concat(idxstats_id.out,
                            flagstat_id.out,
-                           stats_id.out).collect()
-                           .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_id
+                           stats_id.out).collect() | multiqc_id
 
     /* Strain Level Stats and multiqc */
     mark_dups.out.bams.map { row, bam, bai -> ["strain", row.strain, bam, bai] } | \
@@ -189,8 +188,7 @@ workflow {
                                     idxstats_strain.out,
                                     flagstat_strain.out,
                                     stats_strain.out,
-                                    validatebam_strain.out).collect()
-                                    .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
+                                    validatebam_strain.out).collect() | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
     strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
@@ -201,21 +199,15 @@ workflow {
     // summarize coverage
     multiqc_strain.out
         .combine(strain_summary)
-        .combine(Channel.fromPath(params.sample_sheet)) | coverage_report
-        // .combine(summary.out) 
+        .combine(summary.out) | coverage_report
 
     // blobtools
     coverage_report.out.low_strains
-        .splitCsv(sep: '\n', strip: true)
-        .combine(Channel.fromPath(params.sample_sheet))
-        .combine(Channel.fromPath(params.reference)) | blob_align | blob_assemble | blob_unmapped
-    
-    blob_unmapped.out
-        .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
+        .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
 
 }
 
-// this process is currently not working with docker, not sure why, tbd
+
 process summary {
     
     executor 'local'
@@ -246,6 +238,7 @@ process alignment {
     tag { row.id }
     
     label 'md'
+    // container "andersenlab/alignment"
 
     input:
         tuple row, path(fq1), path(fq2)
@@ -281,6 +274,7 @@ process merge_bam {
     tag { row.strain }
 
     label 'lg'
+    // container "andersenlab/alignment"
 
     input:
         tuple strain, row, path(bam), path(bai), val(n_count)
@@ -307,6 +301,7 @@ process mark_dups {
 
     label 'lg'
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
+    // container "andersenlab/alignment"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
@@ -335,13 +330,14 @@ process mark_dups {
 
 process coverage_report {
 
-    container 'andersenlab/r_packages:v0.5' 
+    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
+    //errorStrategy 'ignore'
+
     input:
-        // tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
-        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet")
+        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
 
     output:
         path("low_map_cov_for_seq_sheet.html")
@@ -371,10 +367,10 @@ process blob_align {
 
     cpus 12
 
-    //conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-        tuple val(STRAIN), path("sample_sheet"), path("reference_file")
+        val(STRAIN)
 
     output:
         tuple val(STRAIN), path("Unmapped.out.mate1.step1.fq"), path("Unmapped.out.mate2.step1.fq")
@@ -383,14 +379,11 @@ process blob_align {
     """
     # get fastq pair
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    p1=`cat ${sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
-    p2=`cat ${sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
+    p1=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
+    p2=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
 
     # change ref to unzip
-    cp ${reference_file} reference.fa.gz
-    gunzip reference.fa.gz
-
-    # ref=`echo ${reference_file} | sed 's/.gz//'`
+    ref=`echo ${params.reference} | sed 's/.gz//'`
 
 
     STAR \\
@@ -398,7 +391,7 @@ process blob_align {
     --runMode genomeGenerate \\
     --limitGenomeGenerateRAM 600000000000 \\
     --genomeDir . \\
-    --genomeFastaFiles reference.fa \\
+    --genomeFastaFiles \$ref \\
     --genomeSAindexNbases 12 
     STAR \\
     --runThreadN 12 \\
@@ -422,7 +415,7 @@ process blob_assemble {
     memory '160 GB'
     cpus 24
 
-    //conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
         tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
@@ -457,7 +450,7 @@ process blob_unmapped {
 
     cpus 4
 
-    //conda "/projects/b1059/software/conda_envs/samtools"
+    conda "/projects/b1059/software/conda_envs/samtools"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
@@ -476,20 +469,20 @@ process blob_blast {
 
     cpus 4
 
-    //conda "/projects/b1059/software/conda_envs/blast"
+    conda "/projects/b1059/software/conda_envs/blast"
 
     input:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("ncbi_nt")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
 
     output:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), path("ncbi_nt")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
 
 
     """
     blastn \\
     -task megablast \\
     -query UM_assembly/scaffolds.fasta \\
-    -db ${ncbi_nt}/nt \\
+    -db ${params.ncbi}/nt \\
     -outfmt '6 qseqid staxids bitscore std' \\
     -max_target_seqs 1 \\
     -max_hsps 1 \\
@@ -504,17 +497,17 @@ process blob_plot {
 
     publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
 
-    //conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), path("ncbi_nt")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
 
     output:
         tuple file("*.png"), file("*blobplot.stats.txt")
 
     """
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${ncbi_nt}/names.dmp --nodes ${ncbi_nt}/nodes.dmp
+    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp
     blobtools plot  -i \$st.blobDB.json  -o \$st.plot
 
     """ 
