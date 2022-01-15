@@ -96,7 +96,7 @@ ss %>% dplyr::filter(reads_mapped > 10000) %>%
     ggplot2::ggplot() + 
     ggplot2::geom_point(aes(x=reads_mapped_percent, y=avg_coverage), alpha=0.5, size=1) +
     ggplot2::scale_colour_manual(values=c("black", "red")) +
-    sggplot2::cale_y_log10() + 
+    ggplot2::scale_y_log10() + 
     ggplot2::xlab("Percent reads mapped") + 
     ggplot2::ylab("Average coverage")
 

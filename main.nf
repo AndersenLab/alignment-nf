@@ -178,7 +178,8 @@ workflow {
 
     coverage_id.out.concat(idxstats_id.out,
                            flagstat_id.out,
-                           stats_id.out).collect() | multiqc_id
+                           stats_id.out).collect()
+                           .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_id
 
     /* Strain Level Stats and multiqc */
     mark_dups.out.bams.map { row, bam, bai -> ["strain", row.strain, bam, bai] } | \
@@ -188,7 +189,8 @@ workflow {
                                     idxstats_strain.out,
                                     flagstat_strain.out,
                                     stats_strain.out,
-                                    validatebam_strain.out).collect() | multiqc_strain                 
+                                    validatebam_strain.out).collect()
+                                    .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
     strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
@@ -198,16 +200,22 @@ workflow {
 
     // summarize coverage
     multiqc_strain.out
-        .combine(strain_summary) | coverage_report
+        .combine(strain_summary)
+        .combine(Channel.fromPath(params.sample_sheet)) | coverage_report
         // .combine(summary.out) 
 
     // blobtools
     coverage_report.out.low_strains
-        .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
+        .splitCsv(sep: '\n', strip: true)
+        .combine(Channel.fromPath(params.sample_sheet))
+        .combine(Channel.fromPath(params.reference)) | blob_align | blob_assemble | blob_unmapped
+    
+    blob_unmapped.out
+        .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
 
 }
 
-
+// this process is currently not working with docker, not sure why, tbd
 process summary {
     
     executor 'local'
@@ -238,7 +246,6 @@ process alignment {
     tag { row.id }
     
     label 'md'
-    // container "andersenlab/alignment"
 
     input:
         tuple row, path(fq1), path(fq2)
@@ -274,7 +281,6 @@ process merge_bam {
     tag { row.strain }
 
     label 'lg'
-    // container "andersenlab/alignment"
 
     input:
         tuple strain, row, path(bam), path(bai), val(n_count)
@@ -301,7 +307,6 @@ process mark_dups {
 
     label 'lg'
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
-    // container "andersenlab/alignment"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
@@ -330,15 +335,13 @@ process mark_dups {
 
 process coverage_report {
 
-    //conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
-    container 'andersenlab/r_packages:v0.5' // does this work?
+    container 'andersenlab/r_packages:v0.5' 
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
-    //errorStrategy 'ignore'
-
     input:
-        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
+        // tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
+        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet")
 
     output:
         path("low_map_cov_for_seq_sheet.html")
@@ -371,7 +374,7 @@ process blob_align {
     //conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-        val(STRAIN)
+        tuple val(STRAIN), path("sample_sheet"), path("reference_file")
 
     output:
         tuple val(STRAIN), path("Unmapped.out.mate1.step1.fq"), path("Unmapped.out.mate2.step1.fq")
@@ -380,11 +383,14 @@ process blob_align {
     """
     # get fastq pair
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    p1=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
-    p2=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
+    p1=`cat ${sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
+    p2=`cat ${sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
 
     # change ref to unzip
-    ref=`echo ${params.reference} | sed 's/.gz//'`
+    cp ${reference_file} reference.fa.gz
+    gunzip reference.fa.gz
+
+    # ref=`echo ${reference_file} | sed 's/.gz//'`
 
 
     STAR \\
@@ -392,7 +398,7 @@ process blob_align {
     --runMode genomeGenerate \\
     --limitGenomeGenerateRAM 600000000000 \\
     --genomeDir . \\
-    --genomeFastaFiles \$ref \\
+    --genomeFastaFiles reference.fa \\
     --genomeSAindexNbases 12 
     STAR \\
     --runThreadN 12 \\
@@ -473,17 +479,17 @@ process blob_blast {
     //conda "/projects/b1059/software/conda_envs/blast"
 
     input:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("ncbi_nt")
 
     output:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), path("ncbi_nt")
 
 
     """
     blastn \\
     -task megablast \\
     -query UM_assembly/scaffolds.fasta \\
-    -db ${params.ncbi}/nt \\
+    -db ${ncbi_nt}/nt \\
     -outfmt '6 qseqid staxids bitscore std' \\
     -max_target_seqs 1 \\
     -max_hsps 1 \\
@@ -501,14 +507,14 @@ process blob_plot {
     //conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), path("ncbi_nt")
 
     output:
         tuple file("*.png"), file("*blobplot.stats.txt")
 
     """
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp
+    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${ncbi_nt}/names.dmp --nodes ${ncbi_nt}/nodes.dmp
     blobtools plot  -i \$st.blobDB.json  -o \$st.plot
 
     """ 
