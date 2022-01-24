@@ -201,6 +201,13 @@ workflow {
         .combine(strain_summary)
         .combine(summary.out) | coverage_report
 
+    // check for npr-1 allele
+    if(params.species == "c_elegans") {
+        merge_bam.out.combine(Channel.fromPath("${params.reference}")) | npr1_allele_check
+
+        npr1_allele_check.out.collect() | npr1_allele_count
+    }
+    
     // blobtools
     coverage_report.out.low_strains
         .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
@@ -309,6 +316,7 @@ process mark_dups {
         tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
         tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
         path "${strain}.duplicates.txt", emit: "markdups"
+        tuple path("${strain}.bam"), path("${strain}.bam.bai"), emit: "npr"
 
     """
         picard -Xmx${task.memory.toGiga()}g -Xms1g MarkDuplicates I=${strain}.in.bam \\
@@ -355,6 +363,54 @@ process coverage_report {
         sed -e 's/strain_summary.tsv/${strain_summary}/g' | \\
         sed -e 's+_aggregate/multiqc/strain_data+strain_data+g' > low_map_cov_for_seq_sheet.Rmd
     Rscript -e "rmarkdown::render('low_map_cov_for_seq_sheet.Rmd')"
+
+    """
+
+}
+
+/* 
+    Quick check for npr-1 allele (used to be part of concordance)
+*/
+
+process npr1_allele_check {
+
+    input:
+        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
+
+    output:
+        path("${strain}.npr1.bcf")
+
+    """
+    bcftools mpileup -f ${reference} \\
+    -r X:4768788 \\
+    ${strain}.in.bam |  \\
+    bcftools call -mv -Ob -o ${strain}.npr1.bcf
+    """
+
+}
+
+// Probably not the prettiest way to do this, but gets the job done
+
+process npr1_allele_count {
+
+    publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
+
+    input:
+        path("npr_bcf")
+
+    output:
+        path("npr1_allele_strain.tsv")
+
+    """
+    # index bcf
+    for v in `ls | grep npr_bcf`;
+    do
+    bcftools index \$v;
+    done
+
+    echo -e 'problematic_strain\\tgt' > npr1_allele_strain.tsv
+    bcftools merge ${npr_bcf} --missing-to-ref | \\
+    bcftools query -f '[%SAMPLE\\t%GT\\n]' | awk '\$2 != "1/1"' >> npr1_allele_strain.tsv
 
     """
 
