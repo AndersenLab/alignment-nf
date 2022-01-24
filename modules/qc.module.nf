@@ -155,6 +155,8 @@ process multiqc {
     tag 'lg'
     publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'
 
+    errorStrategy 'ignore'
+
 
     input:
         file("*")

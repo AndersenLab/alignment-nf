@@ -117,6 +117,12 @@ write.table(ss_low %>% dplyr::select(strain), "strains_with_low_values.tsv", sep
 
 DT::datatable(ss_low)
 
+# write out low coverage strains by fastq
+test <- trim_sample_sheet %>%
+  dplyr::filter(strain %in% low_map_strain$strain) %>%
+  dplyr::select(fq1) %>%
+  readr::write_tsv("fastq_for_blobtools.tsv", col_names = F)
+
 ```
 
 

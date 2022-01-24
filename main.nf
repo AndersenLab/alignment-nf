@@ -342,7 +342,8 @@ process coverage_report {
     output:
         path("low_map_cov_for_seq_sheet.html")
         path("low_map_cov_for_seq_sheet.Rmd")
-        path "strains_with_low_values.tsv", emit: "low_strains"
+        // path "strains_with_low_values.tsv", emit: "low_strains"
+        path "fastq_for_blobtools.tsv", emit: "low_strains"
         path("*.tsv")
 
 
@@ -378,9 +379,16 @@ process blob_align {
 
     """
     # get fastq pair
-    st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    p1=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
-    p2=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
+    # st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    # p1=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print "${params.fq_prefix}"\$4 }'`
+    # p2=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print "${params.fq_prefix}"\$5 }'`
+
+    # in case of multiple fastq... combine with comma
+    # p1=`echo \$p1 | sed 's/ /,/g'`
+    # p2=`echo \$p2 | sed 's/ /,/g'`
+
+    p1=`echo "${params.fq_prefix}"${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    p2=`echo \$p1 | sed 's/1P/2P/'`
 
     # change ref to unzip
     ref=`echo ${params.reference} | sed 's/.gz//'`
@@ -400,7 +408,7 @@ process blob_align {
     --outReadsUnmapped Fastx \\
     --twopassMode Basic \\
     --readFilesCommand zcat \\
-    --readFilesIn ${params.fq_prefix}/\$p2 ${params.fq_prefix}/\$p1 
+    --readFilesIn \$p2 \$p1 
 
     mv Unmapped.out.mate1 Unmapped.out.mate1.step1.fq
     mv Unmapped.out.mate2 Unmapped.out.mate2.step1.fq
