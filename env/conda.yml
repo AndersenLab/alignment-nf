@@ -6,11 +6,12 @@ channels:
   - biobuilds
   - conda-forge
 dependencies:
-  - fastp=0.20.0
   - bwa=0.7.17
   - samtools=1.9
-  - picard=2.20.6
+  - picard=2.21.3
   - mosdepth=0.2.6
+  - sambamba=0.7.0
+  - multiqc=1.8
   - star=2.7.9a
   - spades
   - blobtools

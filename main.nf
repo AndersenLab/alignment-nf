@@ -47,16 +47,7 @@ if(params.species == "c_elegans") {
     params.ws_build="June2021"
 }
 
-
-// Define which genome to map to
-// Genome location see config
-// if (params.species == "c_elegans") {
-//     params.reference = "${params.reference_ce}"
-// } else if (params.species == "c_briggsae") {
-//     params.reference = "${params.reference_cb}"
-// } else if (params.species == "c_tropicalis") {
-//     params.reference = "${params.reference_ct}"
-// genomes are all named the same now
+// Define the genome
 if(params.species == "c_elegans" | params.species == "c_briggsae" | params.species == "c_tropicalis") {
     params.reference = "/projects/b1059/data/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
 } else if (params.species == null) {
