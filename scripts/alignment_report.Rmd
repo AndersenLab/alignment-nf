@@ -1,0 +1,189 @@
+---
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    theme: yeti
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, echo=F, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(knitr)
+library(DT)
+library(patchwork)
+
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, print=FALSE, verbose=TRUE)
+opts_chunk$set(results="asis")
+opts_chunk$set(cache=TRUE,cache.path="cache/")
+opts_chunk$set(fig.path="figure/",dev=c("png", "svg"))
+opts_chunk$set(debug = function(before, options, envir) {
+    if (!before) {
+        message(
+            paste(names(envir), as.list(envir),
+                  sep = " = ", collapse = "\n"))
+    }
+})
+
+presentation <- theme(axis.text.x = element_text(size=10, face="bold", color="black"),
+                      axis.text.y = element_text(size=10, face="bold", color="black"),
+                      axis.title.x = element_text(size=14, face="bold", color="black", vjust=-1),
+                      axis.title.y = element_text(size=14, face="bold", color="black", vjust=2),
+                      strip.text.x = element_text(size=12, face="bold", color="black"),
+                      strip.text.y = element_text(size=12, face="bold", color="black"),
+                      panel.spacing = unit(0.50, "lines"),
+                      plot.margin  = unit(c(0.8,0.8,0.8,0.8), "cm"),
+                      plot.title   = element_text(size=24, face="bold",vjust=2),
+                      legend.position="none")
+
+
+```
+
+
+```{r load_and_remove_low_coverage}
+
+########################################
+# CHANGE THESE PATH NAMES ACCORDINGLY
+########################################
+
+# you might have one folder if you re-did all alignments with a new reference, or you might have several folders if you have done several different alignments
+folder1 <- "/projects/b1059/projects/Katie/2022_cendr_release/3.ALIGNMENT/alignment-20220118/_aggregate/"
+folder2 <- "/projects/b1059/projects/Katie/2022_cendr_release/3.ALIGNMENT/alignment-20220119/_aggregate/"
+
+# this might change, if you lost strains after alignment, make sure to remove them manually here
+kept_strains <- unique(sample_sheet$strain)
+
+# sample sheet for alignment - all strains
+# make sure to remove strains that will not continue with analysis
+sample_sheet <- data.table::fread("/projects/b1059/projects/Katie/2022_cendr_release/3.ALIGNMENT/20220114_sample_sheet_for_align_fixed.tsv") %>%
+    dplyr::filter(strain %in% kept_strains)
+
+```
+
+
+```{r calculate_stats}
+
+total_strains <- length(unique(sample_sheet$strain))
+total_sequenced_libraries <- nrow(unique(sample_sheet[, c("strain", "id")]))
+
+# Load coverage data
+# do this for as many folders as you have
+mapped_cov <- NULL
+for(f in grep("folder", ls(), value = T)) {
+    mapped_cov <- mapped_cov %>%
+        dplyr::bind_rows(data.table::fread(glue::glue("{get(f)}/multiqc/strain_data/mqc_mosdepth-coverage-per-contig_1.txt")))
+}
+
+mapped_cov <- mapped_cov %>%
+    dplyr::filter(Sample %in% kept_strains)
+
+mapped_cov$coverage <- rowMeans(mapped_cov[,c("I", "II", "III", "IV", "V", "X")], na.rm=TRUE)
+
+# Load Samtools stats
+mapped_stats <- NULL
+for(f in grep("folder", ls(), value = T)) {
+    mapped_stats <- mapped_stats %>%
+        dplyr::bind_rows(data.table::fread(glue::glue("{get(f)}/multiqc/strain_data/multiqc_samtools_stats.txt")))
+}
+
+mapped_stats <- mapped_stats %>%
+    dplyr::filter(Sample %in% kept_strains)
+
+
+mapped <- mapped_stats %>%
+    dplyr::select(Sample, raw_total_sequences, reads_mapped, reads_mapped_percent) %>% 
+    dplyr::mutate(raw_total_sequences = round(raw_total_sequences/1000000, 2)) %>%
+    dplyr::mutate(reads_mapped = round(reads_mapped/1000000, 2)) %>% 
+    dplyr::mutate(reads_mapped_percent = round(reads_mapped_percent, 1)) %>%
+    dplyr::inner_join(select(mapped_cov, Sample, coverage)) %>% 
+    dplyr::mutate(coverage = round(coverage)) %>% 
+    dplyr::arrange(Sample) 
+
+
+median_table <- data.frame(raw_total_sequences = median(mapped$raw_total_sequences), 
+                           reads_mapped = median(mapped$reads_mapped), 
+                           reads_mapped_percent = median(mapped$reads_mapped_percent),
+                           coverage = median(mapped$coverage)) 
+
+```
+
+## Overview
+
+* __Total strains__ : `r total_strains`
+* __Sequenced libraries__ : `r total_sequenced_libraries`
+* __Median mapped reads__ : `r round((median_table$reads_mapped)) ` million
+* __Median coverage__ : `r median_table$coverage`x
+
+<br>
+
+## Reads Mapped by Strain
+
+```{r reads_mapped_by_strain}
+DT::datatable(mapped,
+              colnames=c("Strain", "Total Reads (M)", "Mapped Reads (M)", "Percent Mapped", "Coverage (x)"),
+              rownames = F, 
+              options = list(pageLength = 5000, scrollY = 400, dom = 'ft'),
+              extensions = c("Scroller"))
+
+data.table::fwrite(mapped, "reads_mapped_by_strain.tsv", sep = "\t")
+```
+
+* Download [Reads Mapped By Strain](reads_mapped_by_strain.tsv)
+
+<br>
+
+## Alignment Metrics
+
+```{r mapped_read_percent, fig.width=8, fig.height=6}
+pa <- ggplot(mapped) + 
+    geom_histogram(aes(x = raw_total_sequences), fill = "#A9A9A9") +
+    geom_vline(data=median_table, aes(xintercept=raw_total_sequences), color = "blue") +
+    geom_text(data=median_table, aes(x = Inf, y = Inf,
+                                    label=paste0("median ", format(round(median_table$raw_total_sequences,2), nsmall=2)),
+                                    vjust = 3, hjust = 2.3),
+              colour="blue",
+              text=element_text(size=16)) +
+    xlab("Total Reads (M)") + ylab("Number of strains") +
+    theme_bw() +
+    presentation 
+
+pb <- ggplot(mapped) + 
+    geom_histogram(aes(x = reads_mapped), fill = "#A9A9A9") +
+    geom_vline(data=median_table, aes(xintercept=reads_mapped), color = "blue") +
+    geom_text(data=median_table, aes(x = Inf, y = Inf,
+                                     label=paste0("median ", format(round(median_table$reads_mapped,2), nsmall=2)),
+                                     vjust = 3, hjust = 2.3),
+              colour="blue",
+              text=element_text(size=16)) +
+    xlab("Mapped Reads (M)") + ylab("Number of strains") +
+    theme_bw() +
+    presentation 
+
+pc <- ggplot(mapped) + 
+    geom_histogram(aes(x = reads_mapped_percent), fill = "#A9A9A9") +
+    geom_vline(data=median_table, aes(xintercept=reads_mapped_percent), color = "blue") +
+    geom_text(data=median_table, aes(x = Inf, y = Inf,
+                                     label=paste0("median ", format(round(median_table$reads_mapped_percent,2), nsmall=2)),
+                                     vjust = 3, hjust = 1.4),
+              colour="blue",
+              text=element_text(size=16)) +
+    xlab("Percent Mapped") + ylab("Number of strains") +
+    theme_bw() +
+    presentation 
+
+pd <- ggplot(mapped) + 
+    geom_histogram(aes(x = coverage), fill = "#A9A9A9") +
+    geom_vline(data=median_table, aes(xintercept=coverage), color = "blue") +
+    geom_text(data=median_table, aes(x = Inf, y = Inf,
+                                     label=paste0("median ", format(round(median_table$coverage))),
+                                     vjust = 3, hjust = 2.1),
+              colour="blue",
+              text=element_text(size=16)) +
+    xlab("Coverage (x)") + ylab("Number of strains") +
+    theme_bw() +
+    presentation
+
+(pa | pb) /(pc | pd)
+
+```

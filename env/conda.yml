@@ -1,18 +1,8 @@
 name: alignment
 channels:
-  - defaults
-  - bioconda
-  - r
-  - biobuilds
-  - conda-forge
+- r
+- defaults
+- conda-forge
+- bioconda
 dependencies:
   - bwa=0.7.17
-  - samtools=1.9
-  - picard=2.21.3
-  - mosdepth=0.2.6
-  - sambamba=0.7.0
-  - multiqc=1.8
-  - star=2.7.9a
-  - spades
-  - blobtools
-  - blast
