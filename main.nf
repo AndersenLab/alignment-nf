@@ -16,6 +16,7 @@ parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software
 // params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
 params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
+params.blob = true
 
 // Debug
 if (params.debug) {
@@ -38,7 +39,7 @@ if (params.debug) {
 // set project and build defaults for CE, CB, and CT, can always change with argument.
 if(params.species == "c_elegans") {
     params.project="PRJNA13758"
-    params.ws_build="WS276"
+    params.ws_build="WS283"
 } else if(params.species == "c_briggsae") {
     params.project="QX1410_nanopore"
     params.ws_build="Feb2020"
@@ -149,7 +150,7 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
-    // summary(Channel.from("run"))
+    summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -196,14 +197,16 @@ workflow {
         // .combine(summary.out) 
 
     // blobtools
-    coverage_report.out.low_strains
-        .splitCsv(sep: '\n', strip: true)
-        .combine(Channel.fromPath(params.sample_sheet))
-        .combine(Channel.fromPath(params.reference)) | blob_align | blob_assemble | blob_unmapped
+    if(params.blob) {
+        coverage_report.out.low_strains
+            .splitCsv(sep: '\n', strip: true)
+            .combine(Channel.fromPath(params.sample_sheet))
+            .combine(Channel.fromPath(params.reference)) | blob_align | blob_assemble | blob_unmapped
     
-    blob_unmapped.out
-        .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
-
+        blob_unmapped.out
+            .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
+    }
+    
 }
 
 // this process is currently not working with docker, not sure why, tbd
@@ -360,6 +363,8 @@ process coverage_report {
 
 process blob_align {
 
+    container 'andersen/blobtools:latest'
+
     cpus 12
 
     //conda "/projects/b1059/software/conda_envs/blobtools"
@@ -412,6 +417,7 @@ process blob_assemble {
 
     memory '160 GB'
     cpus 24
+    container 'andersen/blobtools:latest'
 
     //conda "/projects/b1059/software/conda_envs/blobtools"
 
@@ -447,6 +453,7 @@ process blob_assemble {
 process blob_unmapped {
 
     cpus 4
+    container 'andersen/blobtools:latest'
 
     //conda "/projects/b1059/software/conda_envs/samtools"
 
@@ -466,6 +473,7 @@ process blob_unmapped {
 process blob_blast {
 
     cpus 4
+    container 'andersen/blobtools:latest'
 
     //conda "/projects/b1059/software/conda_envs/blast"
 
@@ -494,6 +502,7 @@ process blob_blast {
 process blob_plot {
 
     publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
+    container 'andersen/blobtools:latest'
 
     //conda "/projects/b1059/software/conda_envs/blobtools"
 
