@@ -373,6 +373,7 @@ process coverage_report {
 */
 
 process npr1_allele_check {
+    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
@@ -392,6 +393,7 @@ process npr1_allele_check {
 // Probably not the prettiest way to do this, but gets the job done
 
 process npr1_allele_count {
+    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
