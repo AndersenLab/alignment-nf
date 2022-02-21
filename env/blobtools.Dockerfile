@@ -1,12 +1,15 @@
 FROM continuumio/miniconda
 MAINTAINER Katie Evans <kathryn.evans@northwestern.edu>
 
-# COPY conda.yml .
-# RUN conda env update -n root -f conda.yml && conda clean -a
+COPY conda.yml .
+RUN conda env update -n root -f conda.yml && conda clean -a
 
+RUN git clone https://github.com/DRL/blobtools.git
+
+RUN conda install -c anaconda python=3.8
+RUN conda install -c bioconda blobtools
 RUN conda install -c bioconda star=2.7.9a
 RUN conda install -c bioconda spades
-RUN conda install -c bioconda blobtools
 RUN conda install -c bioconda blast
 
 RUN apt-get --allow-releaseinfo-change update && \
