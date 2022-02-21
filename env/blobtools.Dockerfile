@@ -6,9 +6,8 @@ RUN conda env update -n root -f conda.yml && conda clean -a
 
 RUN git clone https://github.com/DRL/blobtools.git
 
+RUN conda install -c anaconda python=3.8.12
 RUN conda update -n base -c defaults conda
-
-RUN conda install -c anaconda python=3.8
 RUN conda install -c bioconda blobtools
 RUN conda install -c bioconda star=2.7.9a
 RUN conda install -c bioconda spades
