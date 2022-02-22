@@ -16,6 +16,8 @@ RUN conda install -c bioconda spades
 # spades=3.15.3
 RUN conda install -c bioconda blast=2.12
 
+RUN cd blobtools/
+
 RUN apt-get --allow-releaseinfo-change update && \
    apt-get install -y procps && \
 	rm -rf /var/lib/apt/lists/*
