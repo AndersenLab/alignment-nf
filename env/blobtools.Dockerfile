@@ -1,12 +1,9 @@
-FROM continuumio/miniconda
+FROM continuumio/miniconda3
 MAINTAINER Katie Evans <kathryn.evans@northwestern.edu>
-
-RUN conda update -n base -c defaults conda
 
 COPY conda.yml .
 RUN conda env update -n root -f conda.yml && conda clean -a
 
-RUN conda install -c anaconda python=3.8.12
 # RUN conda install -c anaconda matplotlib docopt tqdm wget pyyaml git
 # RUN conda install -c bioconda pysam --update-deps
 # RUN conda install -c bioconda star=2.7.9a
