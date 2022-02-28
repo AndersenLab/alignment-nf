@@ -45,7 +45,9 @@ module load python/anaconda3.6
 source activate /projects/b1059/software/conda_envs/nf20_env
 ```
 
-* Currently only runs on Quest with conda environments installed at `/projects/b1059/software/conda_envs/`
+* Singularity. On QUEST, you can get this with `module load singularity` before running
+
+*Note: previous versions of pipeline used conda environments on QUEST installed at `/projects/b1059/software/conda_envs/` but this will no longer be maintained*
 
 
 # Usage
@@ -210,3 +212,12 @@ Most files should be obvious. A few are detailed below.
 * __sample_sheet_for_seq_sheet.tsv__ - sample sheet to be added to google sheet, filtered to remove low coverage strains
 * __sample_sheet_for_seq_sheet_ALL.tsv__ - sample sheet to be added to google sheet, contains all strains (use this one)
 * __blobplot/__ - contains plots for low coverage strains to see if they show contamination issues and if they should be resequenced.
+
+# Relevant Docker Images
+
+* `andersenlab/alignment` ([link](https://hub.docker.com/r/andersenlab/alignment)): Docker image is created within this pipeline using GitHub actions. Whenever a change is made to `env/align.Dockerfile` or `.github/workflows/build_docker.yml` GitHub actions will create a new docker image and push if successful
+* `andersenlab/blobtools` ([link](https://hub.docker.com/r/andersenlab/blobtools)): Docker image is created manually, code can be found in the [dockerfile](https://github.com/AndersenLab/dockerfile/tree/master/blobtools) repo.
+
+
+
+
