@@ -150,11 +150,7 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
-<<<<<<< HEAD
-    //summary(Channel.from("run"))
-=======
-    summary(Channel.from("run"))
->>>>>>> master
+    // summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -205,7 +201,6 @@ workflow {
     }
     
     // blobtools
-<<<<<<< HEAD
     if(params.blob) {
         coverage_report.out.low_strains
             .splitCsv(sep: '\n', strip: true)
@@ -215,12 +210,6 @@ workflow {
         blob_unmapped.out
             .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
     }
-    
-=======
-    coverage_report.out.low_strains
-        .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
-
->>>>>>> master
 }
 
 
@@ -552,12 +541,8 @@ process blob_blast {
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
 
     output:
-<<<<<<< HEAD
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
         path("ncbi_nt")
-=======
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
->>>>>>> master
 
 
     """
@@ -586,25 +571,16 @@ process blob_plot {
     conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-<<<<<<< HEAD
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
         path("ncbi_nt")
-=======
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
->>>>>>> master
 
     output:
         tuple file("*.png"), file("*blobplot.stats.txt")
 
     """
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-<<<<<<< HEAD
     blobtools create -i UM_assembly/scaffolds.fasta -b Aligned.sortedByCoord.out.bam -t assembly.1e25.megablast.out -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp --db nodesDB.txt
     blobtools plot -i \$st.blobDB.json -o \$st.plot
-=======
-    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp
-    blobtools plot  -i \$st.blobDB.json  -o \$st.plot
->>>>>>> master
 
     """ 
 }
