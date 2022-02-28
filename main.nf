@@ -13,7 +13,7 @@ nextflow.preview.dsl=2
 
 date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
-// params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
+params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
 params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
 params.blob = true
@@ -150,7 +150,11 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
+<<<<<<< HEAD
     //summary(Channel.from("run"))
+=======
+    summary(Channel.from("run"))
+>>>>>>> master
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -170,8 +174,7 @@ workflow {
 
     coverage_id.out.concat(idxstats_id.out,
                            flagstat_id.out,
-                           stats_id.out).collect()
-                           .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_id
+                           stats_id.out).collect() | multiqc_id
 
     /* Strain Level Stats and multiqc */
     mark_dups.out.bams.map { row, bam, bai -> ["strain", row.strain, bam, bai] } | \
@@ -181,8 +184,7 @@ workflow {
                                     idxstats_strain.out,
                                     flagstat_strain.out,
                                     stats_strain.out,
-                                    validatebam_strain.out).collect()
-                                    .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
+                                    validatebam_strain.out).collect() | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
     strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
@@ -193,10 +195,17 @@ workflow {
     // summarize coverage
     multiqc_strain.out
         .combine(strain_summary)
-        .combine(Channel.fromPath(params.sample_sheet)) | coverage_report
-        // .combine(summary.out) 
+        .combine(summary.out) | coverage_report
 
+    // check for npr-1 allele
+    if(params.species == "c_elegans") {
+        merge_bam.out.combine(Channel.fromPath("${params.reference}")) | npr1_allele_check
+
+        npr1_allele_check.out.collect() | npr1_allele_count
+    }
+    
     // blobtools
+<<<<<<< HEAD
     if(params.blob) {
         coverage_report.out.low_strains
             .splitCsv(sep: '\n', strip: true)
@@ -207,9 +216,14 @@ workflow {
             .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
     }
     
+=======
+    coverage_report.out.low_strains
+        .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
+
+>>>>>>> master
 }
 
-// this process is currently not working with docker, not sure why, tbd
+
 process summary {
     
     executor 'local'
@@ -240,6 +254,7 @@ process alignment {
     tag { row.id }
     
     label 'md'
+    // container "andersenlab/alignment"
 
     input:
         tuple row, path(fq1), path(fq2)
@@ -275,6 +290,7 @@ process merge_bam {
     tag { row.strain }
 
     label 'lg'
+    // container "andersenlab/alignment"
 
     input:
         tuple strain, row, path(bam), path(bai), val(n_count)
@@ -301,6 +317,7 @@ process mark_dups {
 
     label 'lg'
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
+    // container "andersenlab/alignment"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
@@ -308,6 +325,7 @@ process mark_dups {
         tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
         tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
         path "${strain}.duplicates.txt", emit: "markdups"
+        tuple path("${strain}.bam"), path("${strain}.bam.bai"), emit: "npr"
 
     """
         picard -Xmx${task.memory.toGiga()}g -Xms1g MarkDuplicates I=${strain}.in.bam \\
@@ -329,18 +347,20 @@ process mark_dups {
 
 process coverage_report {
 
-    container 'andersenlab/r_packages:v0.5' 
+    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
+    //errorStrategy 'ignore'
+
     input:
-        // tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
-        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet")
+        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
 
     output:
         path("low_map_cov_for_seq_sheet.html")
         path("low_map_cov_for_seq_sheet.Rmd")
-        path "strains_with_low_values.tsv", emit: "low_strains"
+        // path "strains_with_low_values.tsv", emit: "low_strains"
+        path "fastq_for_blobtools.tsv", emit: "low_strains"
         path("*.tsv")
 
 
@@ -356,6 +376,56 @@ process coverage_report {
 }
 
 /* 
+    Quick check for npr-1 allele (used to be part of concordance)
+*/
+
+process npr1_allele_check {
+    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+
+    input:
+        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
+
+    output:
+        path("${strain}.npr1.bcf")
+
+    """
+    bcftools mpileup -f ${reference} \\
+    -r X:4768788 \\
+    ${strain}.in.bam |  \\
+    bcftools call -mv -Ob -o ${strain}.npr1.bcf
+    """
+
+}
+
+// Probably not the prettiest way to do this, but gets the job done
+
+process npr1_allele_count {
+    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+
+    publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
+
+    input:
+        path("npr_bcf")
+
+    output:
+        path("npr1_allele_strain.tsv")
+
+    """
+    # index bcf
+    for v in `ls | grep npr_bcf`;
+    do
+    bcftools index \$v;
+    done
+
+    echo -e 'problematic_strain\\tgt' > npr1_allele_strain.tsv
+    bcftools merge ${npr_bcf} --missing-to-ref | \\
+    bcftools query -f '[%SAMPLE\\t%GT\\n]' | awk '\$2 != "1/1"' >> npr1_allele_strain.tsv
+
+    """
+
+}
+
+/* 
     Blobtools on low coverage strains
 */
 
@@ -365,10 +435,10 @@ process blob_align {
 
     cpus 12
 
-    //conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-        tuple val(STRAIN), path("sample_sheet"), path("reference_file")
+        val(STRAIN)
 
     output:
         tuple val(STRAIN), path("Unmapped.out.mate1.step1.fq"), path("Unmapped.out.mate2.step1.fq")
@@ -376,15 +446,19 @@ process blob_align {
 
     """
     # get fastq pair
-    st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    p1=`cat ${sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$4 }'`
-    p2=`cat ${sample_sheet} | awk -v st="\$st" '\$0 ~ st { print \$5 }'`
+    # st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    # p1=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print "${params.fq_prefix}"\$4 }'`
+    # p2=`cat ${params.sample_sheet} | awk -v st="\$st" '\$0 ~ st { print "${params.fq_prefix}"\$5 }'`
+
+    # in case of multiple fastq... combine with comma
+    # p1=`echo \$p1 | sed 's/ /,/g'`
+    # p2=`echo \$p2 | sed 's/ /,/g'`
+
+    p1=`echo "${params.fq_prefix}"${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    p2=`echo \$p1 | sed 's/1P/2P/'`
 
     # change ref to unzip
-    cp ${reference_file} reference.fa.gz
-    gunzip reference.fa.gz
-
-    # ref=`echo ${reference_file} | sed 's/.gz//'`
+    ref=`echo ${params.reference} | sed 's/.gz//'`
 
 
     STAR \\
@@ -392,7 +466,7 @@ process blob_align {
     --runMode genomeGenerate \\
     --limitGenomeGenerateRAM 600000000000 \\
     --genomeDir . \\
-    --genomeFastaFiles reference.fa \\
+    --genomeFastaFiles \$ref \\
     --genomeSAindexNbases 12 
     STAR \\
     --runThreadN 12 \\
@@ -401,7 +475,7 @@ process blob_align {
     --outReadsUnmapped Fastx \\
     --twopassMode Basic \\
     --readFilesCommand zcat \\
-    --readFilesIn ${params.fq_prefix}/\$p2 ${params.fq_prefix}/\$p1 
+    --readFilesIn \$p2 \$p1 
 
     mv Unmapped.out.mate1 Unmapped.out.mate1.step1.fq
     mv Unmapped.out.mate2 Unmapped.out.mate2.step1.fq
@@ -417,7 +491,7 @@ process blob_assemble {
     cpus 24
     container 'andersenlab/blobtools:v2.1'
 
-    //conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
         tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
@@ -452,7 +526,7 @@ process blob_unmapped {
 
     cpus 4
 
-    //conda "/projects/b1059/software/conda_envs/samtools"
+    conda "/projects/b1059/software/conda_envs/samtools"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
@@ -472,14 +546,18 @@ process blob_blast {
     cpus 4
     container 'andersenlab/blobtools:v2.1'
 
-    //conda "/projects/b1059/software/conda_envs/blast"
+    conda "/projects/b1059/software/conda_envs/blast"
 
     input:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("ncbi_nt")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
 
     output:
+<<<<<<< HEAD
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
         path("ncbi_nt")
+=======
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+>>>>>>> master
 
 
     """
@@ -505,19 +583,28 @@ process blob_plot {
     container 'andersenlab/blobtools:v2.1'
     // container 'genomehubs/blobtoolkit:1.1'
 
-    //conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
+<<<<<<< HEAD
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
         path("ncbi_nt")
+=======
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+>>>>>>> master
 
     output:
         tuple file("*.png"), file("*blobplot.stats.txt")
 
     """
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+<<<<<<< HEAD
     blobtools create -i UM_assembly/scaffolds.fasta -b Aligned.sortedByCoord.out.bam -t assembly.1e25.megablast.out -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp --db nodesDB.txt
     blobtools plot -i \$st.blobDB.json -o \$st.plot
+=======
+    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp
+    blobtools plot  -i \$st.blobDB.json  -o \$st.plot
+>>>>>>> master
 
     """ 
 }
