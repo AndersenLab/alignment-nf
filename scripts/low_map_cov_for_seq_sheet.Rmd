@@ -128,8 +128,13 @@ test <- trim_sample_sheet %>%
 
 ```{r}
 # write out the sample sheet for sequencing google sheet 
+<<<<<<< HEAD
+dplyr::inner_join(gatk_sample_sheet, dplyr::select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
+write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F,row.names = F, sep="\t")
+=======
 inner_join(gatk_sample_sheet, select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
     write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F, row.names = F, sep="\t")
+>>>>>>> master
 
 # write out the sample sheet for sequencing google sheet - remove low coverage strains
 inner_join(gatk_sample_sheet, select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 

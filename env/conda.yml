@@ -1,0 +1,8 @@
+name: alignment
+channels:
+- r
+- defaults
+- conda-forge
+- bioconda
+dependencies:
+  - bwa=0.7.17

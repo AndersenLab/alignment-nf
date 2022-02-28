@@ -16,6 +16,7 @@ parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software
 params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
 params.species = "c_elegans"
 params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
+params.blob = true
 
 // Debug
 if (params.debug) {
@@ -38,7 +39,7 @@ if (params.debug) {
 // set project and build defaults for CE, CB, and CT, can always change with argument.
 if(params.species == "c_elegans") {
     params.project="PRJNA13758"
-    params.ws_build="WS276"
+    params.ws_build="WS283"
 } else if(params.species == "c_briggsae") {
     params.project="QX1410_nanopore"
     params.ws_build="Feb2020"
@@ -47,16 +48,7 @@ if(params.species == "c_elegans") {
     params.ws_build="June2021"
 }
 
-
-// Define which genome to map to
-// Genome location see config
-// if (params.species == "c_elegans") {
-//     params.reference = "${params.reference_ce}"
-// } else if (params.species == "c_briggsae") {
-//     params.reference = "${params.reference_cb}"
-// } else if (params.species == "c_tropicalis") {
-//     params.reference = "${params.reference_ct}"
-// genomes are all named the same now
+// Define the genome
 if(params.species == "c_elegans" | params.species == "c_briggsae" | params.species == "c_tropicalis") {
     params.reference = "/projects/b1059/data/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
 } else if (params.species == null) {
@@ -158,7 +150,11 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
+<<<<<<< HEAD
+    //summary(Channel.from("run"))
+=======
     summary(Channel.from("run"))
+>>>>>>> master
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -209,9 +205,22 @@ workflow {
     }
     
     // blobtools
+<<<<<<< HEAD
+    if(params.blob) {
+        coverage_report.out.low_strains
+            .splitCsv(sep: '\n', strip: true)
+            .combine(Channel.fromPath(params.sample_sheet))
+            .combine(Channel.fromPath("${params.reference}")) | blob_align | blob_assemble | blob_unmapped
+    
+        blob_unmapped.out
+            .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
+    }
+    
+=======
     coverage_report.out.low_strains
         .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped | blob_blast | blob_plot
 
+>>>>>>> master
 }
 
 
@@ -356,8 +365,6 @@ process coverage_report {
 
 
     """
-    echo ".libPaths(c(\\"${params.R_libpath}\\", .libPaths() ))" > .Rprofile
-
     cat "${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd" | \\
         sed -e 's/read.delim("sample_sheet.tsv"/read.delim("${sample_sheet}"/g' | \\
         sed -e 's/strain_summary.tsv/${strain_summary}/g' | \\
@@ -424,6 +431,8 @@ process npr1_allele_count {
 
 process blob_align {
 
+    container 'andersenlab/blobtools:v2.1'
+
     cpus 12
 
     conda "/projects/b1059/software/conda_envs/blobtools"
@@ -480,6 +489,7 @@ process blob_assemble {
 
     memory '160 GB'
     cpus 24
+    container 'andersenlab/blobtools:v2.1'
 
     conda "/projects/b1059/software/conda_envs/blobtools"
 
@@ -534,6 +544,7 @@ process blob_unmapped {
 process blob_blast {
 
     cpus 4
+    container 'andersenlab/blobtools:v2.1'
 
     conda "/projects/b1059/software/conda_envs/blast"
 
@@ -541,7 +552,12 @@ process blob_blast {
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
 
     output:
+<<<<<<< HEAD
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
+        path("ncbi_nt")
+=======
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+>>>>>>> master
 
 
     """
@@ -561,20 +577,34 @@ process blob_blast {
 
 process blob_plot {
 
+    executor 'local'
+
     publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
+    container 'andersenlab/blobtools:v2.1'
+    // container 'genomehubs/blobtoolkit:1.1'
 
     conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
+<<<<<<< HEAD
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
+        path("ncbi_nt")
+=======
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out")
+>>>>>>> master
 
     output:
         tuple file("*.png"), file("*blobplot.stats.txt")
 
     """
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+<<<<<<< HEAD
+    blobtools create -i UM_assembly/scaffolds.fasta -b Aligned.sortedByCoord.out.bam -t assembly.1e25.megablast.out -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp --db nodesDB.txt
+    blobtools plot -i \$st.blobDB.json -o \$st.plot
+=======
     blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp
     blobtools plot  -i \$st.blobDB.json  -o \$st.plot
+>>>>>>> master
 
     """ 
 }
