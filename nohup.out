@@ -1,0 +1,419 @@
+N E X T F L O W  ~  version 20.01.0
+Launching `main.nf` [sick_lumiere] - revision: 423d13acef
+WARN: DSL 2 IS AN EXPERIMENTAL FEATURE UNDER DEVELOPMENT -- SYNTAX MAY CHANGE IN FUTURE RELEASE
+
+
+        *** Using debug mode ***
+
+    
+▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
+             ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
+             ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
+             ▙▟  ▐   ▐  ▐ ▐ ▐ ▐ ▐▐▐ ▐▀▀ ▐ ▐  ▐   ▀▘ ▐ ▌▌▐
+            ▐  ▌ ▝▄ ▗▟▄ ▝▙▜ ▐ ▐ ▐▐▐ ▝▙▞ ▐ ▐  ▝▄     ▐ ▐▌▐
+                         ▖▐
+                         ▝▘
+
+To run the pipeline:
+
+nextflow main.nf --debug
+nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
+
+    parameters              description                                 Set/Default
+    ==========              ===========                                 ========================
+    --debug                 Use --debug to indicate debug mode          true
+    --sample_sheet          See test_data/sample_sheet for example      /projects/b1059/projects/Katie/alignment-nf/test_data/sample_sheet.tsv
+    --species               Species to map: 'c_elegans', 'c_briggsae'   c_elegans
+                              or 'c_tropicalis'                         
+    --fq_prefix             Path to fastq if not in sample_sheet        /projects/b1059/projects/Katie/alignment-nf/test_data
+    --kmers                 Whether to count kmers                      false
+    --reference             genome.fasta.gz to use in place of default  /projects/b1059/data/c_elegans/genomes/PRJNA13758/WS283/c_elegans.PRJNA13758.WS283.genome.fa.gz
+    --output                Output folder name.                         alignment-20220228-debug
+
+    username                                                            kek973
+
+    ----------------------------------------------------------------------------------------------
+    Git info: null - null [null]
+WARN: Access to undefined parameter `help` -- Initialise it to a default value eg. `params.help = some_value`
+[-        ] process > alignment      -
+[-        ] process > kmer_counting  -
+[-        ] process > aggregate_kmer -
+[-        ] process > merge_bam      -
+[-        ] process > mark_dups      -
+[-        ] process > coverage_id    -
+params blob is: true
+yes to blobtools
+
+[-        ] process > alignment          -
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[-        ] process > merge_bam          -
+[-        ] process > mark_dups          -
+[-        ] process > coverage_id        -
+[-        ] process > idxstats_id        -
+[-        ] process > flagstat_id        -
+[-        ] process > stats_id           -
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+
+[-        ] process > alignment          -
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[-        ] process > merge_bam          -
+[-        ] process > mark_dups          -
+[-        ] process > coverage_id        -
+[-        ] process > idxstats_id        -
+[-        ] process > flagstat_id        -
+[-        ] process > stats_id           -
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[-        ] process > alignment          -
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[-        ] process > merge_bam          -
+[-        ] process > mark_dups          -
+[-        ] process > coverage_id        -
+[-        ] process > idxstats_id        -
+[-        ] process > flagstat_id        -
+[-        ] process > stats_id           -
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[-        ] process > merge_bam          -
+[-        ] process > mark_dups          -
+[-        ] process > coverage_id        -
+[-        ] process > idxstats_id        -
+[-        ] process > flagstat_id        -
+[-        ] process > stats_id           -
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[-        ] process > merge_bam          -
+[-        ] process > mark_dups          -
+[90/ee9928] process > coverage_id        [100%] 7 of 7, cached: 7
+[0d/093474] process > idxstats_id        [100%] 9 of 9, cached: 9
+[ad/a6f0a1] process > flagstat_id        [100%] 10 of 10, cached: 10
+[f5/807728] process > stats_id           [100%] 9 of 9, cached: 9
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[09/8fc635] process > merge_bam          [100%] 1 of 1, cached: 1
+[-        ] process > mark_dups          -
+[f8/5ca40f] process > coverage_id        [100%] 15 of 15, cached: 15
+[16/c6b7f1] process > idxstats_id        [100%] 15 of 15, cached: 15
+[e7/41830e] process > flagstat_id        [100%] 15 of 15, cached: 15
+[4f/059cc3] process > stats_id           [100%] 15 of 15, cached: 15
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[03/671a30] process > merge_bam          [100%] 7 of 7, cached: 7
+[-        ] process > mark_dups          -
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16
+[-        ] process > multiqc_id         -
+[-        ] process > coverage_strain    -
+[-        ] process > idxstats_strain    -
+[-        ] process > flagstat_strain    -
+[-        ] process > stats_strain       -
+[-        ] process > validatebam_strain -
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[-        ] process > npr1_allele_check  -
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16
+[f3/ac61de] process > mark_dups          [100%] 7 of 7, cached: 7
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[-        ] process > multiqc_id         -
+[f3/b5f4df] process > coverage_strain    [100%] 1 of 1, cached: 1
+[-        ] process > idxstats_strain    -
+[2f/f0e454] process > flagstat_strain    [100%] 1 of 1, cached: 1
+[49/45a00e] process > stats_strain       [100%] 1 of 1, cached: 1
+[3f/40059b] process > validatebam_strain [100%] 1 of 1, cached: 1
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[dd/8010e0] process > npr1_allele_check  [100%] 7 of 7, cached: 7
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[8e/518159] process > mark_dups          [100%] 15 of 15, cached: 15
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[-        ] process > multiqc_id         -
+[af/d86c7b] process > coverage_strain    [100%] 7 of 7, cached: 7
+[6f/016763] process > idxstats_strain    [100%] 8 of 8, cached: 8
+[6d/da1c35] process > flagstat_strain    [100%] 8 of 8, cached: 8
+[7e/b83e21] process > stats_strain       [100%] 7 of 7, cached: 7
+[2b/1f7a43] process > validatebam_strain [100%] 8 of 8, cached: 8
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[55/9d5354] process > mark_dups          [100%] 16 of 16, cached: 16
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[-        ] process > multiqc_id         -
+[84/978f6c] process > coverage_strain    [100%] 16 of 16, cached: 16
+[e4/9fff45] process > idxstats_strain    [100%] 16 of 16, cached: 16
+[df/23e07b] process > flagstat_strain    [100%] 15 of 15, cached: 15
+[12/159583] process > stats_strain       [100%] 16 of 16, cached: 16
+[f6/e57d85] process > validatebam_strain [100%] 16 of 16, cached: 16
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[-        ] process > npr1_allele_count  -
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[55/9d5354] process > mark_dups          [100%] 16 of 16, cached: 16 ✔
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[-        ] process > multiqc_id         -
+[84/978f6c] process > coverage_strain    [100%] 16 of 16, cached: 16 ✔
+[e4/9fff45] process > idxstats_strain    [100%] 16 of 16, cached: 16 ✔
+[1e/cf80cd] process > flagstat_strain    [100%] 16 of 16, cached: 16 ✔
+[12/159583] process > stats_strain       [100%] 16 of 16, cached: 16 ✔
+[f6/e57d85] process > validatebam_strain [100%] 16 of 16, cached: 16 ✔
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[de/129301] process > npr1_allele_count  [100%] 1 of 1, cached: 1 ✔
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[55/9d5354] process > mark_dups          [100%] 16 of 16, cached: 16 ✔
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[d3/c9174f] process > multiqc_id         [100%] 1 of 1, cached: 1 ✔
+[84/978f6c] process > coverage_strain    [100%] 16 of 16, cached: 16 ✔
+[e4/9fff45] process > idxstats_strain    [100%] 16 of 16, cached: 16 ✔
+[1e/cf80cd] process > flagstat_strain    [100%] 16 of 16, cached: 16 ✔
+[12/159583] process > stats_strain       [100%] 16 of 16, cached: 16 ✔
+[f6/e57d85] process > validatebam_strain [100%] 16 of 16, cached: 16 ✔
+[-        ] process > multiqc_strain     -
+[-        ] process > coverage_report    -
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[de/129301] process > npr1_allele_count  [100%] 1 of 1, cached: 1 ✔
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[55/9d5354] process > mark_dups          [100%] 16 of 16, cached: 16 ✔
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[d3/c9174f] process > multiqc_id         [100%] 1 of 1, cached: 1 ✔
+[84/978f6c] process > coverage_strain    [100%] 16 of 16, cached: 16 ✔
+[e4/9fff45] process > idxstats_strain    [100%] 16 of 16, cached: 16 ✔
+[1e/cf80cd] process > flagstat_strain    [100%] 16 of 16, cached: 16 ✔
+[12/159583] process > stats_strain       [100%] 16 of 16, cached: 16 ✔
+[f6/e57d85] process > validatebam_strain [100%] 16 of 16, cached: 16 ✔
+[cb/480fb6] process > multiqc_strain     [100%] 1 of 1, cached: 1 ✔
+[-        ] process > coverage_report    -
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[de/129301] process > npr1_allele_count  [100%] 1 of 1, cached: 1 ✔
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[55/9d5354] process > mark_dups          [100%] 16 of 16, cached: 16 ✔
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[d3/c9174f] process > multiqc_id         [100%] 1 of 1, cached: 1 ✔
+[84/978f6c] process > coverage_strain    [100%] 16 of 16, cached: 16 ✔
+[e4/9fff45] process > idxstats_strain    [100%] 16 of 16, cached: 16 ✔
+[1e/cf80cd] process > flagstat_strain    [100%] 16 of 16, cached: 16 ✔
+[12/159583] process > stats_strain       [100%] 16 of 16, cached: 16 ✔
+[f6/e57d85] process > validatebam_strain [100%] 16 of 16, cached: 16 ✔
+[cb/480fb6] process > multiqc_strain     [100%] 1 of 1, cached: 1 ✔
+[8b/21e375] process > coverage_report    [100%] 1 of 1, cached: 1 ✔
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[de/129301] process > npr1_allele_count  [100%] 1 of 1, cached: 1 ✔
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+
+[e1/7ebab5] process > alignment          [100%] 16 of 16, cached: 16 ✔
+[-        ] process > kmer_counting      -
+[-        ] process > aggregate_kmer     -
+[2a/e4d06f] process > merge_bam          [100%] 16 of 16, cached: 16 ✔
+[55/9d5354] process > mark_dups          [100%] 16 of 16, cached: 16 ✔
+[ea/cc4eda] process > coverage_id        [100%] 16 of 16, cached: 16 ✔
+[c1/89b8b5] process > idxstats_id        [100%] 16 of 16, cached: 16 ✔
+[bd/ac46a5] process > flagstat_id        [100%] 16 of 16, cached: 16 ✔
+[23/cae4ab] process > stats_id           [100%] 16 of 16, cached: 16 ✔
+[d3/c9174f] process > multiqc_id         [100%] 1 of 1, cached: 1 ✔
+[84/978f6c] process > coverage_strain    [100%] 16 of 16, cached: 16 ✔
+[e4/9fff45] process > idxstats_strain    [100%] 16 of 16, cached: 16 ✔
+[1e/cf80cd] process > flagstat_strain    [100%] 16 of 16, cached: 16 ✔
+[12/159583] process > stats_strain       [100%] 16 of 16, cached: 16 ✔
+[f6/e57d85] process > validatebam_strain [100%] 16 of 16, cached: 16 ✔
+[cb/480fb6] process > multiqc_strain     [100%] 1 of 1, cached: 1 ✔
+[8b/21e375] process > coverage_report    [100%] 1 of 1, cached: 1 ✔
+[2b/7fe307] process > npr1_allele_check  [100%] 16 of 16, cached: 16 ✔
+[de/129301] process > npr1_allele_count  [100%] 1 of 1, cached: 1 ✔
+[-        ] process > blob_align         -
+[-        ] process > blob_assemble      -
+[-        ] process > blob_unmapped      -
+[-        ] process > blob_blast         -
+[-        ] process > blob_plot          -
+WARN: To render the execution DAG in the required format it is required to install Graphviz -- See http://www.graphviz.org for more info.

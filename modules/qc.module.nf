@@ -157,6 +157,8 @@ process multiqc {
 
     errorStrategy 'ignore'
 
+    container "andersenlab/multiqc:latest"
+
 
     input:
         file("*")
@@ -166,7 +168,7 @@ process multiqc {
 
     """
         multiqc . --data-format tsv \\
-                  --config ${workflow.projectDir}/scripts/multiqc_config.yaml \\
+                  --config multiqc_config.yaml \\
                   --title ${params.grouping} \\
                   --flat
         # mv data folder to reduce size

@@ -170,7 +170,8 @@ workflow {
 
     coverage_id.out.concat(idxstats_id.out,
                            flagstat_id.out,
-                           stats_id.out).collect() | multiqc_id
+                           stats_id.out).collect()
+                           .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_id
 
     /* Strain Level Stats and multiqc */
     mark_dups.out.bams.map { row, bam, bai -> ["strain", row.strain, bam, bai] } | \
@@ -180,7 +181,8 @@ workflow {
                                     idxstats_strain.out,
                                     flagstat_strain.out,
                                     stats_strain.out,
-                                    validatebam_strain.out).collect() | multiqc_strain                 
+                                    validatebam_strain.out).collect()
+                                    .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
     strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
@@ -206,7 +208,7 @@ workflow {
         coverage_report.out.low_strains
             .splitCsv(sep: '\n', strip: true)
             .combine(Channel.fromPath(params.sample_sheet))
-            .combine(Channel.fromPath("${params.reference}")) | blob_align | blob_assemble | blob_unmapped
+            .combine(Channel.fromPath("${params.reference}")).view() | blob_align | blob_assemble | blob_unmapped
     
         blob_unmapped.out
             .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
@@ -337,14 +339,15 @@ process mark_dups {
 
 process coverage_report {
 
-    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    container "andersenlab/r_packages:latest"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
     //errorStrategy 'ignore'
 
     input:
-        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("summary"), path("software_versions")
+        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet")
 
     output:
         path("low_map_cov_for_seq_sheet.html")
@@ -370,7 +373,8 @@ process coverage_report {
 */
 
 process npr1_allele_check {
-    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    container "andersenlab/postgatk:latest"
 
     input:
         tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
@@ -390,7 +394,8 @@ process npr1_allele_check {
 // Probably not the prettiest way to do this, but gets the job done
 
 process npr1_allele_count {
-    conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    container "andersenlab/postgatk:latest"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 

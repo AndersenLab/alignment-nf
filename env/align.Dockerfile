@@ -10,7 +10,6 @@ RUN conda install -c bioconda mosdepth=0.2.6
 RUN conda install -c bioconda fastp=0.20.0
 RUN conda install -c conda-forge fd-find
 RUN conda install -c bioconda sambamba
-RUN conda install -c bioconda bcftools
 
 RUN apt-get --allow-releaseinfo-change update && \
    apt-get install -y procps && \
