@@ -1,3 +1,6 @@
+![Build Docker (env/align.Dockerfile)](https://github.com/AndersenLab/wi-gatk/workflows/Build%20Docker%20(env/align.Dockerfile)/badge.svg)
+
+
 # alignment-nf
 
 [TOC]
