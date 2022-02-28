@@ -137,12 +137,13 @@ DT::datatable(ss_low)
 
 ```{r}
 # write out the sample sheet for sequencing google sheet 
-dplyr::inner_join(gatk_sample_sheet, dplyr::select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F, col.names = F, row.names = F, sep="\t")
+dplyr::inner_join(gatk_sample_sheet, dplyr::select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
+write.table("sample_sheet_for_seq_sheet_ALL.tsv", quote=F,row.names = F, sep="\t")
 
 # write out the sample sheet for sequencing google sheet - remove low coverage strains
 dplyr::inner_join(gatk_sample_sheet, dplyr::select(ss, strain, avg_coverage, reads_mapped_percent), by=c("V1"="strain")) %>% 
     dplyr::filter(avg_coverage > 13, reads_mapped_percent > 90) %>%
-    write.table("sample_sheet_for_seq_sheet.tsv", quote=F, col.names = F, row.names = F, sep="\t")
+    write.table("sample_sheet_for_seq_sheet.tsv", quote=F, row.names = F, sep="\t")
 
 
 ```

@@ -150,7 +150,7 @@ sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
 workflow {
     
     // check software
-    summary(Channel.from("run"))
+    //summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
@@ -201,7 +201,7 @@ workflow {
         coverage_report.out.low_strains
             .splitCsv(sep: '\n', strip: true)
             .combine(Channel.fromPath(params.sample_sheet))
-            .combine(Channel.fromPath(params.reference)) | blob_align | blob_assemble | blob_unmapped
+            .combine(Channel.fromPath("${params.reference}")) | blob_align | blob_assemble | blob_unmapped
     
         blob_unmapped.out
             .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
@@ -345,8 +345,6 @@ process coverage_report {
 
 
     """
-    echo ".libPaths(c(\\"${params.R_libpath}\\", .libPaths() ))" > .Rprofile
-
     cat "${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd" | \\
         sed -e 's/read.delim("sample_sheet.tsv"/read.delim("${sample_sheet}"/g' | \\
         sed -e 's/strain_summary.tsv/${strain_summary}/g' | \\
@@ -363,7 +361,7 @@ process coverage_report {
 
 process blob_align {
 
-    container 'andersen/blobtools:latest'
+    container 'andersenlab/blobtools:v2.1'
 
     cpus 12
 
@@ -417,7 +415,7 @@ process blob_assemble {
 
     memory '160 GB'
     cpus 24
-    container 'andersen/blobtools:latest'
+    container 'andersenlab/blobtools:v2.1'
 
     //conda "/projects/b1059/software/conda_envs/blobtools"
 
@@ -453,7 +451,6 @@ process blob_assemble {
 process blob_unmapped {
 
     cpus 4
-    container 'andersen/blobtools:latest'
 
     //conda "/projects/b1059/software/conda_envs/samtools"
 
@@ -473,7 +470,7 @@ process blob_unmapped {
 process blob_blast {
 
     cpus 4
-    container 'andersen/blobtools:latest'
+    container 'andersenlab/blobtools:v2.1'
 
     //conda "/projects/b1059/software/conda_envs/blast"
 
@@ -481,14 +478,15 @@ process blob_blast {
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("ncbi_nt")
 
     output:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), path("ncbi_nt")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
+        path("ncbi_nt")
 
 
     """
     blastn \\
     -task megablast \\
     -query UM_assembly/scaffolds.fasta \\
-    -db ${ncbi_nt}/nt \\
+    -db ${params.ncbi}/nt \\
     -outfmt '6 qseqid staxids bitscore std' \\
     -max_target_seqs 1 \\
     -max_hsps 1 \\
@@ -501,21 +499,25 @@ process blob_blast {
 
 process blob_plot {
 
+    executor 'local'
+
     publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
-    container 'andersen/blobtools:latest'
+    container 'andersenlab/blobtools:v2.1'
+    // container 'genomehubs/blobtoolkit:1.1'
 
     //conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
-        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), path("ncbi_nt")
+        tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
+        path("ncbi_nt")
 
     output:
         tuple file("*.png"), file("*blobplot.stats.txt")
 
     """
     st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
-    blobtools create  -i UM_assembly/scaffolds.fasta  -b Aligned.sortedByCoord.out.bam  -t assembly.1e25.megablast.out  -o \$st --names ${ncbi_nt}/names.dmp --nodes ${ncbi_nt}/nodes.dmp
-    blobtools plot  -i \$st.blobDB.json  -o \$st.plot
+    blobtools create -i UM_assembly/scaffolds.fasta -b Aligned.sortedByCoord.out.bam -t assembly.1e25.megablast.out -o \$st --names ${params.ncbi}/names.dmp --nodes ${params.ncbi}/nodes.dmp --db nodesDB.txt
+    blobtools plot -i \$st.blobDB.json -o \$st.plot
 
     """ 
 }
