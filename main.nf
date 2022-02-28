@@ -190,8 +190,9 @@ workflow {
 
     // summarize coverage
     multiqc_strain.out
-        .combine(strain_summary)
-        .combine(summary.out) | coverage_report
+        .combine(strain_summary) 
+        .combine(Channel.fromPath(params.sample_sheet)) | coverage_report
+        //.combine(summary.out) 
 
     // check for npr-1 allele
     if(params.species == "c_elegans") {
