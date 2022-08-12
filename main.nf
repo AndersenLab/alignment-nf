@@ -145,7 +145,7 @@ include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: p
 // Read sample sheet
 sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
                       .ifEmpty { exit 1, "sample sheet not found" }
-                      .splitCsv(header:true, sep: "\t").view()
+                      .splitCsv(header:true, sep: "\t")
 
 workflow {
     
