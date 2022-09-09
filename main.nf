@@ -121,25 +121,25 @@ if (params.help) {
 }
 
 // Includes
-include coverage as coverage_id from './modules/qc.module.nf' params(params)
-include coverage as coverage_strain from './modules/qc.module.nf' params(params)
+include { coverage as coverage_id } from './modules/qc.module.nf' params(params)
+include coverage as coverage_strain } from './modules/qc.module.nf' params(params)
 
-include idxstats as idxstats_id from './modules/qc.module.nf' params(params)
-include idxstats as idxstats_strain from './modules/qc.module.nf' params(params)
+include { idxstats as idxstats_id } from './modules/qc.module.nf' params(params)
+include idxstats as idxstats_strain } from './modules/qc.module.nf' params(params)
 
-include stats as stats_id from './modules/qc.module.nf' params(params)
-include stats as stats_strain from './modules/qc.module.nf' params(params)
+include { stats as stats_id } from './modules/qc.module.nf' params(params)
+include { stats as stats_strain } from './modules/qc.module.nf' params(params)
 
-include flagstat as flagstat_id from './modules/qc.module.nf' params(params)
-include flagstat as flagstat_strain from './modules/qc.module.nf' params(params)
+include { flagstat as flagstat_id } from './modules/qc.module.nf' params(params)
+include { flagstat as flagstat_strain } from './modules/qc.module.nf' params(params)
 
-include kmer_counting from './modules/qc.module.nf' params(params)
-include aggregate_kmer from './modules/qc.module.nf' params(params)
+include { kmer_counting } from './modules/qc.module.nf' params(params)
+include { aggregate_kmer } from './modules/qc.module.nf' params(params)
 
-include validatebam as validatebam_strain from './modules/qc.module.nf' params(params)
+include { validatebam as validatebam_strain } from './modules/qc.module.nf' params(params)
 
-include multiqc as multiqc_id from './modules/qc.module.nf' params(output: params.output, grouping: "id")
-include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
+include { multiqc as multiqc_id } from './modules/qc.module.nf' params(output: params.output, grouping: "id")
+include { multiqc as multiqc_strain } from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
 
 // Read sample sheet
