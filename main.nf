@@ -249,10 +249,10 @@ process alignment {
     // container "andersenlab/alignment"
 
     input:
-        tuple row, path(fq1), path(fq2)
+        tuple val(row), path(fq1), path(fq2)
         
     output:
-        tuple row, file("${row.id}.bam"), file("${row.id}.bam.bai")
+        tuple val(row), file("${row.id}.bam"), file("${row.id}.bam.bai")
 
 	script:
 		// Construct read group
@@ -285,10 +285,10 @@ process merge_bam {
     // container "andersenlab/alignment"
 
     input:
-        tuple strain, row, path(bam), path(bai), val(n_count)
+        tuple val(strain), val(row), path(bam), path(bai), val(n_count)
 
     output:
-        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
+        tuple val(strain), val(row), file("${row.strain}.bam"), file("${row.strain}.bam.bai")
 
     script:
         if (n_count == 1)
@@ -312,11 +312,11 @@ process mark_dups {
     // container "andersenlab/alignment"
 
     input:
-        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
+        tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai")
     output:
-        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
-        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
-        path "${strain}.duplicates.txt", emit: "markdups"
+        tuple val(row), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
+        tuple val(row), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
+        path("${strain}.duplicates.txt"), emit: "markdups"
         tuple path("${strain}.bam"), path("${strain}.bam.bai"), emit: "npr"
 
     """
@@ -377,7 +377,7 @@ process npr1_allele_check {
     container "andersenlab/postgatk:latest"
 
     input:
-        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
+        tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
 
     output:
         path("${strain}.npr1.bcf")
