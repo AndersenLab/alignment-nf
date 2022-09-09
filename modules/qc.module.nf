@@ -12,7 +12,7 @@ process coverage {
     label 'md'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
 
     output:
         tuple path("${name}.mosdepth.summary.txt"), \
@@ -39,9 +39,9 @@ process idxstats {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.idxstats")
+        tuple val(grouping), path("${name}.idxstats")
 
     """
         samtools idxstats in.bam > ${name}.idxstats
@@ -55,9 +55,9 @@ process stats {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.stats")
+        tuple val(grouping), path("${name}.stats")
 
     """
         samtools stats in.bam > ${name}.stats
@@ -72,9 +72,9 @@ process flagstat {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.flagstat")
+        tuple val(grouping), path("${name}.flagstat")
 
     """
         samtools flagstat in.bam > ${name}.flagstat
@@ -94,9 +94,9 @@ process kmer_counting {
     when params.kmers.toString() == "true"
 
     input:
-        tuple row, file("fq1.fq.gz"), file("fq2.fq.gz")
+        tuple val(row), file("fq1.fq.gz"), file("fq2.fq.gz")
     output:
-        tuple val(row.strain), row, file("${row.id}.kmer.tsv")
+        tuple val(row.strain), val(row), file("${row.id}.kmer.tsv")
 
     """
         # fqs will have same number of lines
@@ -137,9 +137,9 @@ process validatebam {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.validatesamfile.txt")
+        tuple val(grouping), path("${name}.validatesamfile.txt")
 
     """
         picard ValidateSamFile I=in.bam MODE=SUMMARY > ${name}.validatesamfile.txt
