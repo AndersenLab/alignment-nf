@@ -122,10 +122,10 @@ if (params.help) {
 
 // Includes
 include { coverage as coverage_id } from './modules/qc.module.nf' params(params)
-include coverage as coverage_strain } from './modules/qc.module.nf' params(params)
+include { coverage as coverage_strain } from './modules/qc.module.nf' params(params)
 
 include { idxstats as idxstats_id } from './modules/qc.module.nf' params(params)
-include idxstats as idxstats_strain } from './modules/qc.module.nf' params(params)
+include { idxstats as idxstats_strain } from './modules/qc.module.nf' params(params)
 
 include { stats as stats_id } from './modules/qc.module.nf' params(params)
 include { stats as stats_strain } from './modules/qc.module.nf' params(params)
