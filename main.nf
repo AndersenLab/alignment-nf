@@ -5,7 +5,7 @@
     - Daniel Cook <danielecook@gmail.com>
     - Ye Wang <yewangfaith@gmail.com>
 */
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 /* 
     Params
