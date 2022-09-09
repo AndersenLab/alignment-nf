@@ -1,0 +1,73 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://raw.githubusercontent.com/./master/nextflow_schema.json",
+    "title": "alignment-nf pipeline parameters",
+    "description": "Caenorhabditis alignment pipeline",
+    "type": "object",
+    "definitions": {
+        "input_output": {
+            "title": "Input/Output",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "sample_sheet": {
+                    "type": "string",
+                    "default": null
+                },
+                "species": {
+                    "type": "string",
+                    "default": "c_elegans",
+                    "enum": [
+                        "c_elegans",
+                        "c_briggsae",
+                        "c_tropicalis"
+                    ]
+                },
+                "fq_prefix": {
+                    "type": "string",
+                    "default": null,
+                    "hidden": true
+                },
+                "project": {
+                    "type": "string",
+                    "default": null,
+                    "hidden": true
+                },
+                "ws_build": {
+                    "type": "string",
+                    "default": null,
+                    "hidden": true
+                }
+            },
+            "required": [
+                "species",
+                "sample_sheet"
+            ],
+            "fa_icon": "fas fa-terminal"
+        },
+        "general_parameters": {
+            "title": "General Parameters",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "blob": {
+                    "type": "string",
+                    "description": "Run blob tools analysis on problem strains",
+                    "default": "true",
+                    "hidden": true
+                }
+            },
+            "fa_icon": "fas fa-balance-scale-left"
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/input_output"
+        },
+        {
+            "$ref": "#/definitions/general_parameters"
+        }
+    ]
+}
