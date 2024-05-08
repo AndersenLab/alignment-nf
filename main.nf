@@ -13,9 +13,9 @@ nextflow.preview.dsl=2
 
 date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
-params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
+params.R_libpath = "/data/eande106/software/R_lib_3.6.0"
 params.species = "c_elegans"
-params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
+params.ncbi = "/vast/eande106/data/other/ncbi_blast_db/"
 params.blob = true
 
 // Debug
@@ -33,7 +33,7 @@ if (params.debug) {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
     params.sample_sheet = "${workflow.launchDir}/sample_sheet.tsv"
-    params.fq_prefix = "/projects/b1059/data/${params.species}/WI/fastq/dna/"
+    params.fq_prefix = "/vast/eande106/data/${params.species}/WI/fastq/dna/"
 }
 
 // set project and build defaults for CE, CB, and CT, can always change with argument.
@@ -50,7 +50,7 @@ if(params.species == "c_elegans") {
 
 // Define the genome
 if(params.species == "c_elegans" | params.species == "c_briggsae" | params.species == "c_tropicalis") {
-    params.reference = "/projects/b1059/data/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
+    params.reference = "/vast/eande106/data/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
 } else if (params.species == null) {
     if (params.reference == null) {
         if (params.help) {
@@ -339,7 +339,7 @@ process mark_dups {
 
 process coverage_report {
 
-    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    // conda "/data/eande106/software/conda_envs/cegwas2-nf_env"
     container "andersenlab/r_packages:latest"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
@@ -373,7 +373,7 @@ process coverage_report {
 */
 
 process npr1_allele_check {
-    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    // conda "/data/eande106/software/conda_envs/cegwas2-nf_env"
     container "andersenlab/postgatk:latest"
 
     input:
@@ -394,7 +394,7 @@ process npr1_allele_check {
 // Probably not the prettiest way to do this, but gets the job done
 
 process npr1_allele_count {
-    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
+    // conda "data/eande106/software/conda_envs/cegwas2-nf_env"
     container "andersenlab/postgatk:latest"
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
@@ -430,7 +430,7 @@ process blob_align {
 
     cpus 12
 
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/data/eande106/software/conda_envs/blobtools"
 
     input:
         val(STRAIN)
@@ -486,7 +486,7 @@ process blob_assemble {
     cpus 24
     container 'andersenlab/blobtools:v2.1'
 
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    conda "/data/eande106/software/conda_envs/blobtools"
 
     input:
         tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
@@ -521,7 +521,7 @@ process blob_unmapped {
 
     cpus 4
 
-    conda "/projects/b1059/software/conda_envs/samtools"
+    conda "/data/eande106/software/conda_envs/samtools"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
@@ -541,7 +541,7 @@ process blob_blast {
     cpus 4
     container 'andersenlab/blobtools:v2.1'
 
-    conda "/projects/b1059/software/conda_envs/blast"
+    conda "/data/eande106/software/conda_envs/blast"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
