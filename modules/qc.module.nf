@@ -12,7 +12,7 @@ process coverage {
     label 'md'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
 
     output:
         tuple path("${name}.mosdepth.summary.txt"), \
@@ -39,9 +39,9 @@ process idxstats {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.idxstats")
+        tuple val(grouping), path("${name}.idxstats")
 
     """
         samtools idxstats in.bam > ${name}.idxstats
@@ -55,9 +55,9 @@ process stats {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.stats")
+        tuple val(grouping), path("${name}.stats")
 
     """
         samtools stats in.bam > ${name}.stats
@@ -72,9 +72,9 @@ process flagstat {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.flagstat")
+        tuple val(grouping), path("${name}.flagstat")
 
     """
         samtools flagstat in.bam > ${name}.flagstat
@@ -90,21 +90,22 @@ process kmer_counting {
 
     label 'sm'
 
-    tag { "${row.strain}" }
+    tag { "${data.strain}" }
     when params.kmers.toString() == "true"
 
     input:
-        tuple row, file("fq1.fq.gz"), file("fq2.fq.gz")
+        tuple val(data), path(genome_path), val(genome_basename), path(fq1), path(fq2)
+
     output:
-        tuple val(row.strain), row, file("${row.id}.kmer.tsv")
+        tuple val(data.strain), val(data), file("${data.id}.kmer.tsv")
 
     """
         # fqs will have same number of lines
         export OFS="\t"
-        fq_wc=`zcat fq1.fq.gz | awk 'NR % 4 == 0' | wc -l`
-        zcat fq1.fq.gz fq2.fq.gz | \\
+        fq_wc=`zcat fq1 | awk 'NR % 4 == 0' | wc -l`
+        zcat fq1 fq2 | \\
         fastq-kmers -k 6 | \\
-        awk -v OFS="\t" -v ID=${row.id} -v SM=${row.strain} -v fq_wc="\${fq_wc}" 'NR > 1 { print \$0, SM, ID, fq_wc }' - > ${row.id}.kmer.tsv
+        awk -v OFS="\t" -v ID=${data.id} -v SM=${data.strain} -v fq_wc="\${fq_wc}" 'NR > 1 { print \$0, SM, ID, fq_wc }' - > ${data.id}.kmer.tsv
     """
 
 }
@@ -137,9 +138,9 @@ process validatebam {
     label 'sm'
 
     input:
-        tuple grouping, name, path("in.bam"), file("in.bam.bai")
+        tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
     output:
-        tuple grouping, path("${name}.validatesamfile.txt")
+        tuple val(grouping), path("${name}.validatesamfile.txt")
 
     """
         picard ValidateSamFile I=in.bam MODE=SUMMARY > ${name}.validatesamfile.txt

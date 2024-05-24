@@ -5,7 +5,7 @@
     - Daniel Cook <danielecook@gmail.com>
     - Ye Wang <yewangfaith@gmail.com>
 */
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 /* 
     Params
@@ -13,10 +13,6 @@ nextflow.preview.dsl=2
 
 date = new Date().format( 'yyyyMMdd' )
 parse_conda_software = file("${workflow.projectDir}/scripts/parse_conda_software.awk")
-params.R_libpath = "/projects/b1059/software/R_lib_3.6.0"
-params.species = "c_elegans"
-params.ncbi = "/projects/b1059/data/other/ncbi_blast_db/"
-params.blob = true
 
 // Debug
 if (params.debug) {
@@ -28,13 +24,13 @@ if (params.debug) {
     params.output = "alignment-${date}-debug"
     params.sample_sheet = "${workflow.projectDir}/test_data/sample_sheet.tsv"
     params.fq_prefix = "${workflow.projectDir}/test_data"
-
 } else {
     // The strain sheet that used for 'production' is located in the root of the git repo
     params.output = "alignment-${date}"
     params.sample_sheet = "${workflow.launchDir}/sample_sheet.tsv"
-    params.fq_prefix = "/projects/b1059/data/${params.species}/WI/fastq/dna/"
+    params.fq_prefix = "${params.data_path}/${params.species}/WI/fastq/dna/"
 }
+params.ncbi = "${params.data_path}/other/ncbi_blast_db/"
 
 // set project and build defaults for CE, CB, and CT, can always change with argument.
 if(params.species == "c_elegans") {
@@ -50,7 +46,7 @@ if(params.species == "c_elegans") {
 
 // Define the genome
 if(params.species == "c_elegans" | params.species == "c_briggsae" | params.species == "c_tropicalis") {
-    params.reference = "/projects/b1059/data/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
+    params.reference = "${params.data_path}/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
 } else if (params.species == null) {
     if (params.reference == null) {
         if (params.help) {
@@ -67,11 +63,11 @@ if(params.species == "c_elegans" | params.species == "c_briggsae" | params.speci
 
 
 
-// For now, this pipeline requires NXF_VER 20.01.0
+// For now, this pipeline requires NXF_VER 23.0
 // Prefix this version when running
 // e.g.
-// NXF_VER=20.01.0 nextflow run ...
-//assert System.getenv("NXF_VER") == "20.01.0"
+// NXF_VER=23.0 nextflow run ...
+// assert System.getenv("NXF_VER") >= "23.0"
 
 def log_summary() {
 /*
@@ -121,41 +117,45 @@ if (params.help) {
 }
 
 // Includes
-include coverage as coverage_id from './modules/qc.module.nf' params(params)
-include coverage as coverage_strain from './modules/qc.module.nf' params(params)
+include { coverage as coverage_id } from './modules/qc.module.nf' params(params)
+include { coverage as coverage_strain } from './modules/qc.module.nf' params(params)
 
-include idxstats as idxstats_id from './modules/qc.module.nf' params(params)
-include idxstats as idxstats_strain from './modules/qc.module.nf' params(params)
+include { idxstats as idxstats_id } from './modules/qc.module.nf' params(params)
+include { idxstats as idxstats_strain } from './modules/qc.module.nf' params(params)
 
-include stats as stats_id from './modules/qc.module.nf' params(params)
-include stats as stats_strain from './modules/qc.module.nf' params(params)
+include { stats as stats_id } from './modules/qc.module.nf' params(params)
+include { stats as stats_strain } from './modules/qc.module.nf' params(params)
 
-include flagstat as flagstat_id from './modules/qc.module.nf' params(params)
-include flagstat as flagstat_strain from './modules/qc.module.nf' params(params)
+include { flagstat as flagstat_id } from './modules/qc.module.nf' params(params)
+include { flagstat as flagstat_strain } from './modules/qc.module.nf' params(params)
 
-include kmer_counting from './modules/qc.module.nf' params(params)
-include aggregate_kmer from './modules/qc.module.nf' params(params)
+include { kmer_counting } from './modules/qc.module.nf' params(params)
+include { aggregate_kmer } from './modules/qc.module.nf' params(params)
 
-include validatebam as validatebam_strain from './modules/qc.module.nf' params(params)
+include { validatebam as validatebam_strain } from './modules/qc.module.nf' params(params)
 
-include multiqc as multiqc_id from './modules/qc.module.nf' params(output: params.output, grouping: "id")
-include multiqc as multiqc_strain from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
-
-
-// Read sample sheet
-sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
-                      .ifEmpty { exit 1, "sample sheet not found" }
-                      .splitCsv(header:true, sep: "\t")
+include { multiqc as multiqc_id } from './modules/qc.module.nf' params(output: params.output, grouping: "id")
+include { multiqc as multiqc_strain } from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
 workflow {
     
+    // Read sample sheet
+    sample_sheet = Channel.fromPath(params.sample_sheet, checkIfExists: true)
+                        .ifEmpty { exit 1, "sample sheet not found" }
+                        .splitCsv(header:true, sep: "\t")
+
     // check software
     // summary(Channel.from("run"))
 
     aln_in = sample_sheet.map { row -> row.fq1 = params.fq_prefix ? row.fq1 = params.fq_prefix + "/" + row.fq1 : row.fq1; row }
                 .map { row -> row.fq2 = params.fq_prefix ? row.fq2 = params.fq_prefix + "/" + row.fq2 : row.fq2; row }
-                .map { row -> [row, file(row.fq1), file(row.fq2)]}
-    aln_in | (alignment & kmer_counting)
+                .map { row -> [row,
+                               "$params.reference".substring(0, "$params.reference".lastIndexOf("/")),
+                               "$params.reference".substring("$params.reference".lastIndexOf("/") + 1),
+                               file(row.fq1),
+                               file(row.fq2)]}
+    aln_in | alignment
+    aln_in | kmer_counting
     kmer_counting.out | aggregate_kmer
 
     /* Merge Bams */
@@ -178,11 +178,11 @@ workflow {
         (coverage_strain & idxstats_strain & flagstat_strain & stats_strain & validatebam_strain)
 
     mark_dups.out.markdups.concat(coverage_strain.out,
-                                    idxstats_strain.out,
-                                    flagstat_strain.out,
-                                    stats_strain.out,
-                                    validatebam_strain.out).collect()
-                                    .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
+                                  idxstats_strain.out,
+                                  flagstat_strain.out,
+                                  stats_strain.out,
+                                  validatebam_strain.out).collect()
+                                 .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
     strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
@@ -243,31 +243,32 @@ process summary {
 
 process alignment {
 
-    tag { row.id }
+    tag { data.id }
     
     label 'md'
     // container "andersenlab/alignment"
 
     input:
-        tuple row, path(fq1), path(fq2)
+        tuple val(data), path(genome_path), val(genome_basename), path(fq1), path(fq2)
         
     output:
-        tuple row, file("${row.id}.bam"), file("${row.id}.bam.bai")
+        tuple val(data), file("${data.id}.bam"), file("${data.id}.bam.bai")
 
 	script:
 		// Construct read group
 		RG = ["@RG",
-			  "ID:${row.id}",
-			  "SM:${row.strain}",
-			  "LB:${row.lb}",
+			  "ID:${data.id}",
+			  "SM:${data.strain}",
+			  "LB:${data.lb}",
 			  "PL:illumina"].join("\\t")
 
     """
-        bwa mem -t ${task.cpus} -R '${RG}' ${params.reference} ${fq1} ${fq2} | \\
+        INDEX=`find -L ${genome_path} -name "${genome_basename}.amb" | sed 's/\\.amb\$//'`
+        bwa mem -t ${task.cpus} -R '${RG}' \${INDEX} ${fq1} ${fq2} | \\
         sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
-        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${row.id}.bam /dev/stdin
-        sambamba index --nthreads=${task.cpus} ${row.id}.bam
-        if [[ ! \$(samtools view ${row.id}.bam | head -n 10) ]]; then
+        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${data.id}.bam /dev/stdin
+        sambamba index --nthreads=${task.cpus} ${data.id}.bam
+        if [[ ! \$(samtools view ${data.id}.bam | head -n 10) ]]; then
             exit 1;
         fi
     """
@@ -285,10 +286,10 @@ process merge_bam {
     // container "andersenlab/alignment"
 
     input:
-        tuple strain, row, path(bam), path(bai), val(n_count)
+        tuple val(strain), val(row), path(bam), path(bai), val(n_count)
 
     output:
-        tuple strain, row, file("${row.strain}.bam"), file("${row.strain}.bam.bai")
+        tuple val(strain), val(row), file("${row.strain}.bam"), file("${row.strain}.bam.bai")
 
     script:
         if (n_count == 1)
@@ -312,10 +313,10 @@ process mark_dups {
     // container "andersenlab/alignment"
 
     input:
-        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai")
+        tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai")
     output:
-        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
-        tuple row, path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
+        tuple val(row), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
+        tuple val(row), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
         path "${strain}.duplicates.txt", emit: "markdups"
         tuple path("${strain}.bam"), path("${strain}.bam.bai"), emit: "npr"
 
@@ -377,7 +378,7 @@ process npr1_allele_check {
     container "andersenlab/postgatk:latest"
 
     input:
-        tuple val(strain), row, path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
+        tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
 
     output:
         path("${strain}.npr1.bcf")
