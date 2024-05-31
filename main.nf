@@ -219,6 +219,7 @@ workflow {
 process summary {
     
     executor 'local'
+    container null
 
     // conda 'fd-find'
     publishDir "${params.output}", mode: 'copy'

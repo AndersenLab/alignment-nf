@@ -115,7 +115,9 @@ process aggregate_kmer {
 
     tag "aggregate-kmer"
 
-    label 'sm'
+    executor 'local'
+    container null
+
     publishDir "${params.output}/_aggregate", mode: 'copy'
     when params.kmers.toString() == "true"
 
