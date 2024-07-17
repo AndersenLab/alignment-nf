@@ -5,67 +5,69 @@
 
 [TOC]
 
-The [alignment-nf](https://github.com/AndersenLab/alignment-nf) pipeline performs alignment for wild isolate sequence data __at the strain level__, and outputs BAMs and related information. Those BAMs can be used for downstream analysis including variant calling, [concordance analysis](http://andersenlab.org/dry-guide/pipeline-concordance/), [wi-gatk-nf (variant calling)](http://andersenlab.org/dry-guide/pipeline-wi/) and other analyses.
+The [alignment-nf](https://github.com/AndersenLab/alignment-nf) pipeline performs alignment for wild isolate sequence data __at the strain level__, and outputs BAMs and related information. Those BAMs can be used for downstream analysis including variant calling, [concordance analysis](http://andersenlab.org/dry-guide/pipelines/pipeline-concordance/), [wi-gatk-nf (variant calling)](http://andersenlab.org/dry-guide/pipelines/pipeline-wi/) and other analyses.
 
-This page details how to run the pipeline and how to add new wild isolate sequencing data. You can also find more information on the Andersen Lab [dry guide](http://andersenlab.org/dry-guide/latest/pipeline-alignment/).
+This page details how to run the pipeline and how to add new wild isolate sequencing data. You can also find more information on the Andersen Lab [dry guide](http://andersenlab.org/dry-guide/latest/pipelines/pipeline-alignment/).
 
 
 # Pipeline overview
 
 ```
 
-             ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
-             ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
-             ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
-             ▙▟  ▐   ▐  ▐ ▐ ▐ ▐ ▐▐▐ ▐▀▀ ▐ ▐  ▐   ▀▘ ▐ ▌▌▐
-            ▐  ▌ ▝▄ ▗▟▄ ▝▙▜ ▐ ▐ ▐▐▐ ▝▙▞ ▐ ▐  ▝▄     ▐ ▐▌▐
-                         ▖▐
-                         ▝▘
-    parameters              description                                 Set/Default
-    ==========              ===========                                 ========================
-    --debug                 Use --debug to indicate debug mode          null
-    --sample_sheet          See test_data/sample_sheet for example      null
-    --species               Species to map: 'ce', 'cb' or 'ct'          null
-    --fq_prefix             Path to fastq if not in sample_sheet        /projects/b1059/data/{species}/WI/fastq/dna/
-    --kmers                 Whether to count kmers                      false
-    --reference             genome.fasta.gz to use in place of default  defaults for c.e, c.b, and c.t
-    --output                Output folder name.                         alignment-{date}
+						 ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
+						 ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
+						 ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
+						 ▙▟  ▐   ▐  ▐ ▐ ▐ ▐ ▐▐▐ ▐▀▀ ▐ ▐  ▐   ▀▘ ▐ ▌▌▐
+						▐  ▌ ▝▄ ▗▟▄ ▝▙▜ ▐ ▐ ▐▐▐ ▝▙▞ ▐ ▐  ▝▄     ▐ ▐▌▐
+												 ▖▐
+												 ▝▘
+		parameters              description                                 Set/Default
+		==========              ===========                                 ========================
+		--debug                 Use --debug to indicate debug mode          null
+		--sample_sheet          See test_data/sample_sheet for example      null
+		--species               Species to map: 'ce', 'cb' or 'ct'          null
+		--fq_prefix             Path to fastq if not in sample_sheet        /vast/eande106/data/{species}/WI/fastq/dna/
+		--kmers                 Whether to count kmers                      false
+		--reference             genome.fasta.gz to use in place of default  defaults for c.e, c.b, and c.t
+		--output                Output folder name.                         alignment-{date}
 
-    HELP: http://andersenlab.org/dry-guide/pipeline-alignment/
+		HELP: http://andersenlab.org/dry-guide/pipelines/pipeline-alignment/
 ```
 
 ![Pipeline-overview](alignment-nf.drawio.svg)
 
 ## Software requirements
 
-* Nextflow v20.01+ (see the dry guide on Nextflow [here](quest-nextflow.md) or the Nextflow documentation [here](https://www.nextflow.io/docs/latest/getstarted.html)). On QUEST, you can access this version by loading the `nf20` conda environment prior to running the pipeline command:
+* Nextflow v20.01+ (see the dry guide on Nextflow [here](http://andersenlab.org/dry-guide/rockfish/rf-nextflow/) or the Nextflow documentation [here](https://www.nextflow.io/docs/latest/getstarted.html)). On Rockfish, you can access this version by loading the `nf23_env` conda environment prior to running the pipeline command:
 
 ```
-module load python/anaconda3.6
-source activate /projects/b1059/software/conda_envs/nf20_env
+module load python/anaconda
+source activate /data/eande106/software/conda_envs/nf23_env
 ```
 
-* Singularity. On QUEST, you can get this with `module load singularity` before running
+* Singularity. On Rockfish, you can get this with `module load singularity` before running
 
 *Note: previous versions of pipeline used conda environments on QUEST installed at `/projects/b1059/software/conda_envs/` but this will no longer be maintained*
 
 
 # Usage
 
-## Testing on Quest
+## Testing on Rockfish
 
 *This command uses a test dataset*
 
 ```
-nextflow run main.nf --debug -profile quest
+nextflow run -latest andersenlab/alignment-nf --debug
 ```
 
-## Running on Quest
+## Running on Rockfish
 
-You should run this in a screen session.
+You should run this in a screen or tmux session.
+
+*Note: if you are having issues running Nextflow or need reminders, check out the [Nextflow](http://andersenlab.org/dry-guide/rockfish/rf-nextflow/) page.*
 
 ```
-nextflow run main.nf --sample_sheet <path_to_sample_sheet> --species c_elegans -profile quest -resume
+nextflow run -latest andersenlab/alignment-nf --sample_sheet <path_to_sample_sheet> --species c_elegans
 ```
 
 # Parameters
@@ -74,13 +76,16 @@ nextflow run main.nf --sample_sheet <path_to_sample_sheet> --species c_elegans -
 
 There are three configuration profiles for this pipeline.
 
-* `local` - Used for local development.
-* `quest` - Used for running on Quest.
-* `gcp` - For running on Google Cloud (not currently active?).
+* `rockfish` - Used for running on Rockfish (default).
+* `quest`    - Used for running on Quest.
+* `local`    - Used for local development.
+
+>[!Note]
+>If you forget to add a `-profile`, the `rockfish` profile will be chosen as default
 
 ## --sample_sheet
 
-The `sample sheet` for alignment is the output from the [trim-fq-nf](https://github.com/AndersenLab/trim-fq-nf) pipeline. the `sample sheet` has the following columns:
+The `sample sheet` for alignment is the output from the [trim-fq-nf](https://github.com/AndersenLab/trim-fq-nf) pipeline. The `sample sheet` **must be tsv formatted**, is the **full path to the sample sheet** (even if it is in your current directory), and has the following columns:
 
 * __strain__ - the name of the strain. Multiple sequencing runs of the same strain are merged together.
 * __id__ - A unique ID for each sequencing run. This must be unique for every single pair of FASTQs.
@@ -88,32 +93,41 @@ The `sample sheet` for alignment is the output from the [trim-fq-nf](https://git
 * __fq1__ - The path to FASTQ1
 * __fq2__ - The path to FASTQ2
 
-![Sample_sheet](img/alignment_sample_sheet.png)
+![Sample_sheet](alignment-nf.drawio.svg)
 
+>[!Note]
+>Remember that in `--debug` mode the pipeline will use the sample sheet located in `test_data/sample_sheet.tsv`.
 
 The `library` column is a useful tool for identifying errors by variant callers. For example, if the same library is sequenced twice, and a variant is only observed in one sequencing run then that variant may be excluded as a technical / PCR artifact depending on the variant caller being used.
 
-The alignment pipeline will merge multiple sequencing runs of the same strain into a single bam. However, summary output is provided at both the `strain` and `id` level. In this way, if there is a poor sequencing run it can be identified and removed from a collection of sequencing runs belonging to a strain. **For this reason, it is important that each id be unique and not just the strain name**
+>[!Important]
+>The alignment pipeline will merge multiple sequencing runs of the same strain into a single bam. However, summary output is provided at both the `strain` and `id` level. In this way, if there is a poor sequencing run it can be identified and removed from a collection of sequencing runs belonging to a strain. **For this reason, it is important that each id be unique and not just the strain name**
+
+>[!Note]
+>The sample sheet is a critical tool. It allows us to associated metadata with each sequencing run (e.g. isotype, reference strain, id, library). It also allows us to quickly verify that all results have been output. It is much easier than working with a list of files!
 
 ## --debug (optional)
 
-You should use `--debug true` for testing/debugging purposes. This will run the debug test set (located in the `test_data` folder) using your specified configuration profile (e.g. local / quest / gcp).
+You should use `--debug` for testing/debugging purposes. This will run the debug test set (located in the `test_data` folder) using your specified configuration profile (e.g. rockfish / quest / local).
 
 For example:
 
 ```
-nextflow run main.nf -profile quest --debug -resume
+nextflow run -latest andersenlab/alignment-nf --debug -resume
 ```
 
 Using `--debug` will automatically set the sample sheet to `test_data/sample_sheet.tsv`
 
 ### --species (optional)
 
-Defaults to "c_elegans", change to "c_briggsae" or "c_tropicalis" to select correct reference file.
+Defaults to "c_elegans", change to "c_briggsae" or "c_tropicalis" to select correct reference file. If species == "c_elegans", a check will be run for the *npr-1* allele. *Note: this process used to happen later in `concordance-nf`, however it was moved up to `alignment-nf` to avoid having to rerun the long `wi-gatk` process if an incorrect strain is included.* 
 
 ### --fq_prefix (optional)
 
 Within a sample sheet you may specify the locations of FASTQs using an absolute directory or a relative directory. If you want to use a relative directory, you should use the `--fq_prefix` to set the path that should be prefixed to each FASTQ.
+
+>[!Note]
+>Previously, this option was `--fqs_file_prefix`
 
 ### --kmers (optional)
 
@@ -125,31 +139,35 @@ Toggles kmer-analysis
 
 A fasta reference indexed with BWA. WS245 is packaged with the pipeline for convenience when testing or running locally.
 
-On Quest, the default references are here:
+On Rockfish, the default references are here:
 
 ```
-c_elegans: /projects/b1059/data/c_elegans/genomes/PRJNA13758/WS276/c_elegans.PRJNA13758.WS276.genome.fa.gz
-c_briggsae: /projects/b1059/data/c_briggsae/genomes/QX1410_nanopore/Feb2020/c_briggsae.QX1410_nanopore.Feb2020.genome.fa.gz
-c_tropicalis: /projects/b1059/data/c_tropicalis/genomes/NIC58_nanopore/June2021/c_tropicalis.NIC58_nanopore.June2021.genome.fa.gz
+c_elegans: /vast/eande106/data/c_elegans/genomes/PRJNA13758/WS283/c_elegans.PRJNA13758.WS283.genome.fa.gz
+c_briggsae: /vast/eande106/data/c_briggsae/genomes/QX1410_nanopore/Feb2020/c_briggsae.QX1410_nanopore.Feb2020.genome.fa.gz
+c_tropicalis: /vast/eande106/data/c_tropicalis/genomes/NIC58_nanopore/June2021/c_tropicalis.NIC58_nanopore.June2021.genome.fa.gz
 ```
 
-A different `--project` and `--wsbuild` can be used with the `--species` parameter to generate the path to other reference genomes such as:
-
-```
-nextflow run main.nf --species c_elegans --project PRJNA13758 --wsbuild WS280
-```
+>[!Note]
+>A different `--project` and `--wsbuild` can be used with the `--species` parameter to generate the path to other reference genomes such as:
+>```
+>nextflow run -latest andersenlab/alignment-nf --species c_elegans --project PRJNA13758 --wsbuild WS280
+>```
 
 ### --ncbi (optional)
 
-__Default__ - `/projects/b1059/data/other/ncbi_blast_db/`
+__Default__ - `/vast/eande106/data/other/ncbi_blast_db/`
 
 Path to the NCBI blast database used for blobtool analysis. Should not need to change.
+
+### --blob (optional)
+
+Defaults to true. Change to false if you don't need to run blobtool analysis on low coverage strains. This step can take a while, so if you don't need it you might want to exclude it.
 
 ### --output (optional)
 
 __Default__ - `alignment-YYYYMMDD`
 
-A directory in which to output results. If you have set `--debug true`, the default output directory will be `alignment-YYYYMMDD-debug`.
+A directory in which to output results. If you have set `--debug`, the default output directory will be `alignment-YYYYMMDD-debug`.
 
 
 # Output
@@ -212,6 +230,7 @@ Most files should be obvious. A few are detailed below.
 * __sample_sheet_for_seq_sheet.tsv__ - sample sheet to be added to google sheet, filtered to remove low coverage strains
 * __sample_sheet_for_seq_sheet_ALL.tsv__ - sample sheet to be added to google sheet, contains all strains (use this one)
 * __blobplot/__ - contains plots for low coverage strains to see if they show contamination issues and if they should be resequenced.
+* __npr1_allele_strain.tsv__ - if species == c_elegans, this file will be output to show problematic strains that contain the N2 *npr-1* allele and should be manually checked. 
 
 # Relevant Docker Images
 
