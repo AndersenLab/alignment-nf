@@ -3,8 +3,6 @@
 
 # alignment-nf
 
-[TOC]
-
 The [alignment-nf](https://github.com/AndersenLab/alignment-nf) pipeline performs alignment for wild isolate sequence data __at the strain level__, and outputs BAMs and related information. Those BAMs can be used for downstream analysis including variant calling, [concordance analysis](http://andersenlab.org/dry-guide/pipelines/pipeline-concordance/), [wi-gatk-nf (variant calling)](http://andersenlab.org/dry-guide/pipelines/pipeline-wi/) and other analyses.
 
 This page details how to run the pipeline and how to add new wild isolate sequencing data. You can also find more information on the Andersen Lab [dry guide](http://andersenlab.org/dry-guide/latest/pipelines/pipeline-alignment/).
@@ -14,31 +12,31 @@ This page details how to run the pipeline and how to add new wild isolate sequen
 
 ```
 
-						 ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
-						 ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
-						 ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
-						 ▙▟  ▐   ▐  ▐ ▐ ▐ ▐ ▐▐▐ ▐▀▀ ▐ ▐  ▐   ▀▘ ▐ ▌▌▐
-						▐  ▌ ▝▄ ▗▟▄ ▝▙▜ ▐ ▐ ▐▐▐ ▝▙▞ ▐ ▐  ▝▄     ▐ ▐▌▐
-												 ▖▐
-												 ▝▘
-		parameters              description                                 Set/Default
-		==========              ===========                                 ========================
-		--debug                 Use --debug to indicate debug mode          null
-		--sample_sheet          See test_data/sample_sheet for example      null
-		--species               Species to map: 'ce', 'cb' or 'ct'          null
-		--fq_prefix             Path to fastq if not in sample_sheet        /vast/eande106/data/{species}/WI/fastq/dna/
-		--kmers                 Whether to count kmers                      false
-		--reference             genome.fasta.gz to use in place of default  defaults for c.e, c.b, and c.t
-		--output                Output folder name.                         alignment-{date}
+         ▗▖ ▝▜   ▝                       ▗      ▗▖ ▖▗▄▄▖
+         ▐▌  ▐  ▗▄   ▄▄ ▗▗▖ ▗▄▄  ▄▖ ▗▗▖ ▗▟▄     ▐▚ ▌▐
+         ▌▐  ▐   ▐  ▐▘▜ ▐▘▐ ▐▐▐ ▐▘▐ ▐▘▐  ▐      ▐▐▖▌▐▄▄▖
+         ▙▟  ▐   ▐  ▐ ▐ ▐ ▐ ▐▐▐ ▐▀▀ ▐ ▐  ▐   ▀▘ ▐ ▌▌▐
+        ▐  ▌ ▝▄ ▗▟▄ ▝▙▜ ▐ ▐ ▐▐▐ ▝▙▞ ▐ ▐  ▝▄     ▐ ▐▌▐
+                     ▖▐
+                     ▝▘
+	parameters              description                                 Set/Default
+	==========              ===========                                 ========================
+	--debug                 Use --debug to indicate debug mode          null
+	--sample_sheet          See test_data/sample_sheet for example      null
+	--species               Species to map: 'ce', 'cb' or 'ct'          null
+	--fq_prefix             Path to fastq if not in sample_sheet        /vast/eande106/data/{species}/WI/fastq/dna/
+	--kmers                 Whether to count kmers                      false
+	--reference             genome.fasta.gz to use in place of default  defaults for c.e, c.b, and c.t
+	--output                Output folder name.                         alignment-{date}
 
-		HELP: http://andersenlab.org/dry-guide/pipelines/pipeline-alignment/
+	HELP: http://andersenlab.org/dry-guide/pipelines/pipeline-alignment/
 ```
 
 ![Pipeline-overview](alignment-nf.drawio.svg)
 
 ## Software requirements
 
-* Nextflow v20.01+ (see the dry guide on Nextflow [here](http://andersenlab.org/dry-guide/rockfish/rf-nextflow/) or the Nextflow documentation [here](https://www.nextflow.io/docs/latest/getstarted.html)). On Rockfish, you can access this version by loading the `nf23_env` conda environment prior to running the pipeline command:
+* Nextflow v23+ (see the dry guide on Nextflow [here](http://andersenlab.org/dry-guide/rockfish/rf-nextflow/) or the Nextflow documentation [here](https://www.nextflow.io/docs/latest/getstarted.html)). On Rockfish, you can access this version by loading the `nf23_env` conda environment prior to running the pipeline command:
 
 ```
 module load python/anaconda
@@ -93,7 +91,7 @@ The `sample sheet` for alignment is the output from the [trim-fq-nf](https://git
 * __fq1__ - The path to FASTQ1
 * __fq2__ - The path to FASTQ2
 
-![Sample_sheet](alignment-nf.drawio.svg)
+![Sample_sheet](img/alignment_sample_sheet.png)
 
 >[!Note]
 >Remember that in `--debug` mode the pipeline will use the sample sheet located in `test_data/sample_sheet.tsv`.
