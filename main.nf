@@ -185,11 +185,9 @@ workflow {
                                  .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
 
     /* Generate a bam file summary for the next step */
-    strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> ["strain\tbam\tindex", "${row.strain}\t${row.strain}.bam\t${row.strain}.bam.bai", ""].join("\n") } \
+    strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
                  .collectFile(name: 'strain_summary.tsv',
-                              newLine: false,
-                              keepHeader: true,
-                              skip: 1,
+                              newLine: true,
                               storeDir: "${params.output}")
 
     // summarize coverage
