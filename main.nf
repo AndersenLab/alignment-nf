@@ -99,6 +99,7 @@ nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
     --kmers                 Whether to count kmers                      ${params.kmers}
     --reference             genome.fasta.gz to use in place of default  ${params.reference}
     --output                Output folder name.                         ${params.output}
+    --output                Output folder name.                         ${params.data_path}
 
     username                                                            ${"whoami".execute().in.text}
     ----------------------------------------------------------------------------------------------
@@ -193,7 +194,8 @@ workflow {
     // summarize coverage
     multiqc_strain.out
         .combine(strain_summary) 
-        .combine(Channel.fromPath(params.sample_sheet)) | coverage_report
+        .combine(Channel.fromPath(params.sample_sheet))
+        .combine(Channel.fromPath("${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd")| coverage_report
         //.combine(summary.out) 
 
     // check for npr-1 allele
@@ -349,7 +351,7 @@ process coverage_report {
     //errorStrategy 'ignore'
 
     input:
-        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet")
+        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("low_map_cov_for_seq_sheet.Rmd")
 
     output:
         path("low_map_cov_for_seq_sheet.html")
@@ -360,7 +362,7 @@ process coverage_report {
 
 
     """
-    cat "${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd" | \\
+    cat "low_map_cov_for_seq_sheet.Rmd" | \\
         sed -e 's/read.delim("sample_sheet.tsv"/read.delim("${sample_sheet}"/g' | \\
         sed -e 's/strain_summary.tsv/${strain_summary}/g' | \\
         sed -e 's+_aggregate/multiqc/strain_data+strain_data+g' > low_map_cov_for_seq_sheet.Rmd
