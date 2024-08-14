@@ -195,7 +195,7 @@ workflow {
     multiqc_strain.out
         .combine(strain_summary) 
         .combine(Channel.fromPath(params.sample_sheet))
-        .combine(Channel.fromPath("${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd")| coverage_report
+        .combine(Channel.fromPath("${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd")) | coverage_report
         //.combine(summary.out) 
 
     // check for npr-1 allele
