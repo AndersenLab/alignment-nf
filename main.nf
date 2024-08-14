@@ -351,7 +351,7 @@ process coverage_report {
     //errorStrategy 'ignore'
 
     input:
-        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("low_map_cov_for_seq_sheet.Rmd")
+        tuple path("report.html"), path("strain_data/*"), path("strain_summary"), path("sample_sheet"), path("original_low_map_cov_for_seq_sheet.Rmd")
 
     output:
         path("low_map_cov_for_seq_sheet.html")
@@ -362,7 +362,7 @@ process coverage_report {
 
 
     """
-    cat "low_map_cov_for_seq_sheet.Rmd" | \\
+    cat original_low_map_cov_for_seq_sheet.Rmd | \\
         sed -e 's/read.delim("sample_sheet.tsv"/read.delim("${sample_sheet}"/g' | \\
         sed -e 's/strain_summary.tsv/${strain_summary}/g' | \\
         sed -e 's+_aggregate/multiqc/strain_data+strain_data+g' > low_map_cov_for_seq_sheet.Rmd
