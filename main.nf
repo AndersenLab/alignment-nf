@@ -346,7 +346,7 @@ process coverage_report {
     // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
     container "andersenlab/r_packages:latest"
 
-    publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
+    publishDir "${params.output}", mode: 'copy'
 
     //errorStrategy 'ignore'
 
