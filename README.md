@@ -36,11 +36,11 @@ This page details how to run the pipeline and how to add new wild isolate sequen
 
 ## Software requirements
 
-* Nextflow v23+ (see the dry guide on Nextflow [here](http://andersenlab.org/dry-guide/rockfish/rf-nextflow/) or the Nextflow documentation [here](https://www.nextflow.io/docs/latest/getstarted.html)). On Rockfish, you can access this version by loading the `nf23_env` conda environment prior to running the pipeline command:
+* Nextflow v24+ (see the dry guide on Nextflow [here](http://andersenlab.org/dry-guide/rockfish/rf-nextflow/) or the Nextflow documentation [here](https://www.nextflow.io/docs/latest/getstarted.html)). On Rockfish, you can access this version by loading the `nf24_env` conda environment prior to running the pipeline command:
 
 ```
 module load python/anaconda
-source activate /data/eande106/software/conda_envs/nf23_env
+source activate /data/eande106/software/conda_envs/nf24_env
 ```
 
 * Singularity. On Rockfish, you can get this with `module load singularity` before running
