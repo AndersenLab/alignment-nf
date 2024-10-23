@@ -10,6 +10,7 @@ process coverage {
 //    publishDir "${params.output}/coverage/${grouping}", mode: 'copy'
 
     label 'md'
+    label 'alignment'
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -37,6 +38,7 @@ process idxstats {
     tag {"${grouping} -> ${name}" }
 
     label 'sm'
+    label 'alignment'
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -53,6 +55,7 @@ process stats {
     tag {"${grouping} -> ${name}" }
 
     label 'sm'
+    label 'alignment'
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -70,6 +73,7 @@ process flagstat {
     tag {"${grouping} -> ${name}" }
 
     label 'sm'
+    label 'alignment'
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -89,6 +93,7 @@ process flagstat {
 process kmer_counting {
 
     label 'sm'
+    label 'alignment'
 
     tag { "${data.strain}" }
     when params.kmers.toString() == "true"
@@ -137,6 +142,7 @@ process validatebam {
 
     tag {"${grouping} -> ${name}" }
 
+    label 'alignment'
     label 'sm'
 
     input:
@@ -153,14 +159,12 @@ process validatebam {
 /* MULTI-QC */
 process multiqc {
 
-    tag { "multiqc" }
+    label 'lg'
+    label 'multiqc'
 
-    tag 'lg'
     publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'
 
     errorStrategy 'ignore'
-
-    container "andersenlab/multiqc:latest"
 
 
     input:

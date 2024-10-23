@@ -249,7 +249,7 @@ process alignment {
     tag { data.id }
     
     label 'md'
-    // container "andersenlab/alignment"
+    label 'alignment'
 
     input:
         tuple val(data), path(genome_path), val(genome_basename), path(fq1), path(fq2)
@@ -286,7 +286,7 @@ process merge_bam {
     tag { row.strain }
 
     label 'lg'
-    // container "andersenlab/alignment"
+    label 'alignment'
 
     input:
         tuple val(strain), val(row), path(bam), path(bai), val(n_count)
@@ -312,8 +312,9 @@ process mark_dups {
     tag { "${strain}" }
 
     label 'lg'
+    label 'alignment'
+
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
-    // container "andersenlab/alignment"
 
     input:
         tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai")
@@ -343,8 +344,8 @@ process mark_dups {
 
 process coverage_report {
 
-    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
-    container "andersenlab/r_packages:latest"
+    label 'xs'
+    label 'r'
 
     publishDir "${params.output}", mode: 'copy'
 
@@ -377,8 +378,9 @@ process coverage_report {
 */
 
 process npr1_allele_check {
-    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
-    container "andersenlab/postgatk:latest"
+
+    label 'sm'
+    label 'postgatk'
 
     input:
         tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
@@ -398,8 +400,9 @@ process npr1_allele_check {
 // Probably not the prettiest way to do this, but gets the job done
 
 process npr1_allele_count {
-    // conda "/projects/b1059/software/conda_envs/cegwas2-nf_env"
-    container "andersenlab/postgatk:latest"
+    
+    label 'sm'
+    label 'postgatk'
 
     publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
 
@@ -430,11 +433,8 @@ process npr1_allele_count {
 
 process blob_align {
 
-    container 'andersenlab/blobtools:v2.1'
-
-    cpus 12
-
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    label 'md'
+    label 'blob'
 
     input:
         val(STRAIN)
@@ -453,22 +453,23 @@ process blob_align {
     # p1=`echo \$p1 | sed 's/ /,/g'`
     # p2=`echo \$p2 | sed 's/ /,/g'`
 
+    MEM=$(cat ${task.memory} | awk 'BEGIN{FS=" "}{if ( $$1 ~ /^[G|g]/ ) printf "%s000000000", $0; else  printf "%s000000", $0}')
+
     p1=`echo "${params.fq_prefix}"${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
     p2=`echo \$p1 | sed 's/1P/2P/'`
 
     # change ref to unzip
     ref=`echo ${params.reference} | sed 's/.gz//'`
 
-
     STAR \\
-    --runThreadN 12 \\
+    --runThreadN ${task.cpus} \\
     --runMode genomeGenerate \\
-    --limitGenomeGenerateRAM 600000000000 \\
+    --limitGenomeGenerateRAM $${MEM} \\
     --genomeDir . \\
     --genomeFastaFiles \$ref \\
     --genomeSAindexNbases 12 
     STAR \\
-    --runThreadN 12 \\
+    --runThreadN ${task.cpus} \\
     --genomeDir . \\
     --outSAMtype BAM Unsorted SortedByCoordinate \\
     --outReadsUnmapped Fastx \\
@@ -486,11 +487,8 @@ process blob_align {
 
 process blob_assemble {
 
-    memory '160 GB'
-    cpus 24
-    container 'andersenlab/blobtools:v2.1'
-
-    conda "/projects/b1059/software/conda_envs/blobtools"
+    label "blob"
+    label "xl"
 
     input:
         tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
@@ -500,18 +498,20 @@ process blob_assemble {
 
 
     """
+    MEM=$(cat ${task.memory} | awk 'BEGIN{FS=" "}{if ( $$1 ~ /^[G|g]/ ) printf "%s000000000", $0; else  printf "%s000000", $0}')
+    
     spades.py --pe1-1 Unmapped_mate1_step1.fq  --pe1-2 Unmapped_mate2_step1.fq -t 24 -m 160 --only-assembler -o UM_assembly
 
     STAR \\
-    --runThreadN 24 \\
+    --runThreadN ${task.cpus} \\
     --runMode genomeGenerate \\
-    --limitGenomeGenerateRAM 600000000000 \\
+    --limitGenomeGenerateRAM $${MEM} \\
     --genomeDir . \\
     --genomeFastaFiles UM_assembly/scaffolds.fasta \\
     --genomeSAindexNbases 5 \\
 
     STAR \\
-    --runThreadN 24 \\
+    --runThreadN ${task.cpus} \\
     --genomeDir . \\
     --outSAMtype BAM Unsorted SortedByCoordinate \\
     --outReadsUnmapped Fastx \\
@@ -523,9 +523,8 @@ process blob_assemble {
 
 process blob_unmapped {
 
-    cpus 4
-
-    conda "/projects/b1059/software/conda_envs/samtools"
+    label 'xs'
+    label 'alignment'
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
@@ -536,16 +535,13 @@ process blob_unmapped {
 
     """
     samtools index Aligned.sortedByCoord.out.bam
-
     """ 
 }
 
 process blob_blast {
 
-    cpus 4
-    container 'andersenlab/blobtools:v2.1'
-
-    conda "/projects/b1059/software/conda_envs/blast"
+    label "blob"
+    label "md"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai")
@@ -572,13 +568,10 @@ process blob_blast {
 
 process blob_plot {
 
-    executor 'local'
+    label "blob"
+    label "sm"
 
     publishDir "${workflow.launchDir}/${params.output}/blobtools/", mode: 'copy'
-    container 'andersenlab/blobtools:v2.1'
-    // container 'genomehubs/blobtoolkit:1.1'
-
-    conda "/projects/b1059/software/conda_envs/blobtools"
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam"), path("Aligned.sortedByCoord.out.bam.bai"), path("assembly.1e25.megablast.out"), \
