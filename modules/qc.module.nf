@@ -159,7 +159,7 @@ process validatebam {
 /* MULTI-QC */
 process multiqc {
 
-    label 'lg'
+    label 'md'
     label 'multiqc'
 
     publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'

@@ -87,7 +87,7 @@ out = '''
 To run the pipeline:
 
 nextflow main.nf --debug
-nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
+nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=c_elegans
 
     parameters              description                                 Set/Default
     ==========              ===========                                 ========================
@@ -99,7 +99,6 @@ nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=ce
     --kmers                 Whether to count kmers                      ${params.kmers}
     --reference             genome.fasta.gz to use in place of default  ${params.reference}
     --output                Output folder name.                         ${params.output}
-    --output                Output folder name.                         ${params.data_path}
 
     username                                                            ${"whoami".execute().in.text}
     ----------------------------------------------------------------------------------------------
@@ -208,9 +207,7 @@ workflow {
     // blobtools
     if(params.blob) {
         coverage_report.out.low_strains
-            .splitCsv(sep: '\n', strip: true)
-            .combine(Channel.fromPath(params.sample_sheet))
-            .combine(Channel.fromPath("${params.reference}")).view() | blob_align | blob_assemble | blob_unmapped
+            .splitCsv(sep: '\n', strip: true) | blob_align | blob_assemble | blob_unmapped
     
         blob_unmapped.out
             .combine(Channel.fromPath("${params.ncbi}")) | blob_blast | blob_plot
@@ -285,7 +282,7 @@ process merge_bam {
 
     tag { row.strain }
 
-    label 'lg'
+    label 'sm'
     label 'alignment'
 
     input:
@@ -311,7 +308,7 @@ process mark_dups {
 
     tag { "${strain}" }
 
-    label 'lg'
+    label 'sm'
     label 'alignment'
 
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
@@ -455,7 +452,7 @@ process blob_align {
 
     MEM=$(cat ${task.memory} | awk 'BEGIN{FS=" "}{if ( $$1 ~ /^[G|g]/ ) printf "%s000000000", $0; else  printf "%s000000", $0}')
 
-    p1=`echo "${params.fq_prefix}"${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
+    p1=`echo "${params.fq_prefix}/"${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
     p2=`echo \$p1 | sed 's/1P/2P/'`
 
     # change ref to unzip
@@ -488,7 +485,7 @@ process blob_align {
 process blob_assemble {
 
     label "blob"
-    label "xl"
+    label "md"
 
     input:
         tuple val(STRAIN), path("Unmapped_mate1_step1.fq"), path("Unmapped_mate2_step1.fq")
