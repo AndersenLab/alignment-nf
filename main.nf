@@ -440,6 +440,8 @@ process blob_align {
         tuple val(STRAIN), path("Unmapped.out.mate1.step1.fq"), path("Unmapped.out.mate2.step1.fq")
 
 
+    script:
+    def avail_mem = (task.memory.byte).intValue()
     """
     # get fastq pair
     # st=`echo ${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
@@ -450,8 +452,6 @@ process blob_align {
     # p1=`echo \$p1 | sed 's/ /,/g'`
     # p2=`echo \$p2 | sed 's/ /,/g'`
 
-    MEM=$(cat ${task.memory} | awk 'BEGIN{FS=" "}{if ( $$1 ~ /^[G|g]/ ) printf "%s000000000", $0; else  printf "%s000000", $0}')
-
     p1=`echo "${params.fq_prefix}/"${STRAIN} | sed 's/\\[//' | sed 's/\\]//'`
     p2=`echo \$p1 | sed 's/1P/2P/'`
 
@@ -461,7 +461,7 @@ process blob_align {
     STAR \\
     --runThreadN ${task.cpus} \\
     --runMode genomeGenerate \\
-    --limitGenomeGenerateRAM $${MEM} \\
+    --limitGenomeGenerateRAM ${avail_mem} \\
     --genomeDir . \\
     --genomeFastaFiles \$ref \\
     --genomeSAindexNbases 12 
@@ -494,15 +494,16 @@ process blob_assemble {
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")
 
 
+    script:
+    def avail_mem = (task.memory.byte).intValue()
     """
-    MEM=$(cat ${task.memory} | awk 'BEGIN{FS=" "}{if ( $$1 ~ /^[G|g]/ ) printf "%s000000000", $0; else  printf "%s000000", $0}')
     
     spades.py --pe1-1 Unmapped_mate1_step1.fq  --pe1-2 Unmapped_mate2_step1.fq -t 24 -m 160 --only-assembler -o UM_assembly
 
     STAR \\
     --runThreadN ${task.cpus} \\
     --runMode genomeGenerate \\
-    --limitGenomeGenerateRAM $${MEM} \\
+    --limitGenomeGenerateRAM ${avail_mem} \\
     --genomeDir . \\
     --genomeFastaFiles UM_assembly/scaffolds.fasta \\
     --genomeSAindexNbases 5 \\
