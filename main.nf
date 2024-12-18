@@ -342,7 +342,7 @@ process mark_dups {
 process coverage_report {
 
     label 'xs'
-    label 'r'
+    label 'R'
 
     publishDir "${params.output}", mode: 'copy'
 
