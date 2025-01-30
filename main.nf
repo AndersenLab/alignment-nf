@@ -5,7 +5,23 @@
     - Daniel Cook <danielecook@gmail.com>
     - Ye Wang <yewangfaith@gmail.com>
 */
-nextflow.enable.dsl=2
+
+// Includes
+
+include { coverage as coverage_id } from './modules/qc.module'
+include { coverage as coverage_strain } from './modules/qc.module'
+include { idxstats as idxstats_id } from './modules/qc.module'
+include { idxstats as idxstats_strain } from './modules/qc.module'
+include { stats as stats_id } from './modules/qc.module'
+include { stats as stats_strain } from './modules/qc.module'
+include { flagstat as flagstat_id } from './modules/qc.module'
+include { flagstat as flagstat_strain } from './modules/qc.module'
+include { kmer_counting } from './modules/qc.module'
+include { aggregate_kmer } from './modules/qc.module'
+include { validatebam as validatebam_strain } from './modules/qc.module'
+include { multiqc as multiqc_id } from './modules/qc.module'
+include { multiqc as multiqc_strain } from './modules/qc.module'
+
 
 /* 
     Params
@@ -47,6 +63,11 @@ if(params.species == "c_elegans") {
 // Define the genome
 if(params.species == "c_elegans" | params.species == "c_briggsae" | params.species == "c_tropicalis") {
     params.reference = "${params.data_path}/${params.species}/genomes/${params.project}/${params.ws_build}/${params.species}.${params.project}.${params.ws_build}.genome.fa.gz"
+    if (params.bam_dir != null) {
+        bam_dir = params.bam_dir
+    } else  {
+        bam_dir = "${params.data_path}/${params.species}/WI/alignments"
+    }
 } else if (params.species == null) {
     if (params.reference == null) {
         if (params.help) {
@@ -59,6 +80,15 @@ if(params.species == "c_elegans" | params.species == "c_briggsae" | params.speci
         exit 1
         }
     }
+    if (params.skip_external_bams == false & params.bam_dir == null & params.help == false) {
+        println """
+
+        Please specify a species: c_elegans c_brigssae c_tropicalis with option --species, a pre-existing bam directory with --bam_dir, or skip merging with pre-existing bams with --skip_external_bams"
+
+        """
+        exit 1
+    }
+    bam_dir = params.bam_dir
 }
 
 
@@ -96,7 +126,10 @@ nextflow main.nf --sample_sheet=name_of_sample_sheet.tsv --species=c_elegans
     --species               Species to map: 'c_elegans', 'c_briggsae'   ${params.species}
                               or 'c_tropicalis'                         
     --fq_prefix             Path to fastq if not in sample_sheet        ${params.fq_prefix}
-    --kmers                 Whether to count kmers                      ${params.kmers}
+    --bam_dir               Path to pre-existing strain bams            ${bam_dir}
+    --skip_kmers            Whether to skip counting kmers              ${params.skip_kmers}
+    --skip_external_bams    Whether to skip merging with pre-existing
+                            strain bam files                            ${params.skip_external_bams}
     --reference             genome.fasta.gz to use in place of default  ${params.reference}
     --output                Output folder name.                         ${params.output}
 
@@ -115,27 +148,6 @@ log.info(log_summary())
 if (params.help) {
     exit 1
 }
-
-// Includes
-include { coverage as coverage_id } from './modules/qc.module.nf' params(params)
-include { coverage as coverage_strain } from './modules/qc.module.nf' params(params)
-
-include { idxstats as idxstats_id } from './modules/qc.module.nf' params(params)
-include { idxstats as idxstats_strain } from './modules/qc.module.nf' params(params)
-
-include { stats as stats_id } from './modules/qc.module.nf' params(params)
-include { stats as stats_strain } from './modules/qc.module.nf' params(params)
-
-include { flagstat as flagstat_id } from './modules/qc.module.nf' params(params)
-include { flagstat as flagstat_strain } from './modules/qc.module.nf' params(params)
-
-include { kmer_counting } from './modules/qc.module.nf' params(params)
-include { aggregate_kmer } from './modules/qc.module.nf' params(params)
-
-include { validatebam as validatebam_strain } from './modules/qc.module.nf' params(params)
-
-include { multiqc as multiqc_id } from './modules/qc.module.nf' params(output: params.output, grouping: "id")
-include { multiqc as multiqc_strain } from './modules/qc.module.nf' params(output: params.output, grouping: "strain")
 
 workflow {
     
@@ -159,9 +171,23 @@ workflow {
     kmer_counting.out | aggregate_kmer
 
     /* Merge Bams */
-    merge_in = alignment.out.map { row -> [row[0].strain] + row }
-                        .groupTuple()
-                        .map { strain, row, bam, bai -> [strain, row.sort()[0], bam, bai, row.size()] }
+    if (params.skip_external_bams == false) {
+        inventory_existing_bams( bam_dir, Channel.fromPath(bam_dir) )
+        existing_bams = inventory_existing_bams.out.splitCsv(sep: "\t")
+            .join( alignment.out
+                       .map { row -> [row[0].strain, row[1], row[2]] }
+                       .groupTuple() )
+            .map{ row -> [row[0], row[1], row[2]] }
+        
+        merge_in = alignment.out.map { row -> [row[0].strain] + [row[1], row[2]] }
+            .concat( existing_bams)
+            .groupTuple()
+            .map { strain, bam, bai -> [strain, bam, bai, bam.size()] }
+    } else {
+        merge_in = alignment.out.map { row -> [row[0].strain] + [row[1], row[2]] }
+            .groupTuple()
+            .map { strain, bam, bai -> [strain, bam, bai, bam.size()] }
+    }
     merge_in | merge_bam | mark_dups
 
     /* ID Level Stats and multiqc */
@@ -171,10 +197,11 @@ workflow {
     coverage_id.out.concat(idxstats_id.out,
                            flagstat_id.out,
                            stats_id.out).collect()
-                           .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_id
+                           .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml"))
+                           .map{ row -> ["id", row] } | multiqc_id
 
     /* Strain Level Stats and multiqc */
-    mark_dups.out.bams.map { row, bam, bai -> ["strain", row.strain, bam, bai] } | \
+    mark_dups.out.bams.map { strain, bam, bai -> ["strain", strain, bam, bai] } | \
         (coverage_strain & idxstats_strain & flagstat_strain & stats_strain & validatebam_strain)
 
     mark_dups.out.markdups.concat(coverage_strain.out,
@@ -182,13 +209,17 @@ workflow {
                                   flagstat_strain.out,
                                   stats_strain.out,
                                   validatebam_strain.out).collect()
-                                 .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml")) | multiqc_strain                 
+                                 .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml"))
+                                 .map{ row -> ["strain", row] } | multiqc_strain
 
     /* Generate a bam file summary for the next step */
-    strain_summary = mark_dups.out.strain_sheet.map { row, bam, bai -> [row.strain, "${row.strain}.bam","${row.strain}.bam.bai"].join("\t") } \
+    strain_summary = mark_dups.out.strain_sheet.map { strain, bam, bai -> [strain, "${strain}.bam","${strain}.bam.bai"].join("\t") } \
                  .collectFile(name: 'strain_summary.tsv',
                               newLine: true,
                               storeDir: "${params.output}")
+
+    // Find final coverage of each strain bam
+    find_final_coverage( mark_dups.out.bams )
 
     // summarize coverage
     multiqc_strain.out
@@ -230,9 +261,9 @@ process summary {
         tuple path("sample_sheet.tsv"), path("summary.txt"), path("software_versions.txt")
 
     """
-        echo '''${log_summary()}''' > summary.txt
-        fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
-        cat ${params.sample_sheet} > sample_sheet.tsv
+    echo '''${log_summary()}''' > summary.txt
+    fd "\\.nf\$" ${workflow.projectDir} --exclude 'work' --exec awk -f ${parse_conda_software} > software_versions.txt
+    cat ${params.sample_sheet} > sample_sheet.tsv
     """
 
 }
@@ -243,6 +274,7 @@ process summary {
 
 process alignment {
 
+    array 100
     tag { data.id }
     
     label 'md'
@@ -263,14 +295,35 @@ process alignment {
 			  "PL:illumina"].join("\\t")
 
     """
-        INDEX=`find -L ${genome_path} -name "${genome_basename}.amb" | sed 's/\\.amb\$//'`
-        bwa mem -t ${task.cpus} -R '${RG}' \${INDEX} ${fq1} ${fq2} | \\
-        sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
-        sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${data.id}.bam /dev/stdin
-        sambamba index --nthreads=${task.cpus} ${data.id}.bam
-        if [[ ! \$(samtools view ${data.id}.bam | head -n 10) ]]; then
-            exit 1;
-        fi
+    INDEX=`find -L ${genome_path} -name "${genome_basename}.amb" | sed 's/\\.amb\$//'`
+    bwa mem -t ${task.cpus} -R '${RG}' \${INDEX} ${fq1} ${fq2} | \\
+    sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
+    sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${data.id}.bam /dev/stdin
+    sambamba index --nthreads=${task.cpus} ${data.id}.bam
+    if [[ ! \$(samtools view ${data.id}.bam | head -n 10) ]]; then
+        exit 1;
+    fi
+    """
+}
+
+process inventory_existing_bams {
+    
+    executor 'local'
+    container null
+    
+    input:
+        val(bam_path)
+        path(bam_dir)
+
+    output:
+        path("bam_list.txt")
+
+    script:
+    """
+    for I in ${bam_dir}/*.bam; do
+        NAME=\$(basename \${I})
+        echo -e "\${NAME/.bam/}\\t${bam_path}/\${NAME}\t${bam_path}/\${NAME}.bai" >> bam_list.txt
+    done
     """
 }
 
@@ -280,32 +333,34 @@ process alignment {
 */
 process merge_bam {
 
-    tag { row.strain }
+    array 20
+    tag { "${strain}" }
 
     label 'sm'
     label 'alignment'
 
     input:
-        tuple val(strain), val(row), path(bam), path(bai), val(n_count)
+        tuple val(strain), path(bam), path(bai), val(n_count)
 
     output:
-        tuple val(strain), val(row), file("${row.strain}.bam"), file("${row.strain}.bam.bai")
+        tuple val(strain), file("new_${strain}.bam"), file("new_${strain}.bam.bai")
 
     script:
-        if (n_count == 1)
-            """
-                mv ${bam} ${strain}.bam
-                mv ${bai} ${strain}.bam.bai
-            """
-        else
-            """
-                sambamba merge --nthreads=${task.cpus} --show-progress ${strain}.bam ${bam}
-                sambamba index --nthreads=${task.cpus} ${strain}.bam
-            """
+    if (n_count == 1)
+        """
+        mv ${bam} ${strain}.bam
+        mv ${bai} ${strain}.bam.bai
+        """
+    else
+        """
+        sambamba merge --nthreads=${task.cpus} --show-progress new_${strain}.bam ${bam}
+        sambamba index --nthreads=${task.cpus} new_${strain}.bam
+        """
 }
 
 process mark_dups {
 
+    array 20
     tag { "${strain}" }
 
     label 'sm'
@@ -314,24 +369,24 @@ process mark_dups {
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
 
     input:
-        tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai")
+        tuple val(strain), path("${strain}.in.bam"), path("${strain}.in.bam.bai")
     output:
-        tuple val(row), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
-        tuple val(row), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
+        tuple val(strain), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "bams"
+        tuple val(strain), path("${strain}.bam"), path("${strain}.bam.bai"), emit: "strain_sheet"
         path "${strain}.duplicates.txt", emit: "markdups"
         tuple path("${strain}.bam"), path("${strain}.bam.bai"), emit: "npr"
 
     """
-        picard -Xmx${task.memory.toGiga()}g -Xms1g MarkDuplicates I=${strain}.in.bam \\
-                              O=${strain}.bam \\
-                              M=${strain}.duplicates.txt \\
-                              VALIDATION_STRINGENCY=SILENT \\
-                              REMOVE_DUPLICATES=false \\
-                              TAGGING_POLICY=All \\
-                              REMOVE_SEQUENCING_DUPLICATES=TRUE \\
-                              SORTING_COLLECTION_SIZE_RATIO=0.1
+    picard -Xmx${task.memory.toGiga()}g -Xms1g MarkDuplicates I=${strain}.in.bam \\
+                            O=${strain}.bam \\
+                            M=${strain}.duplicates.txt \\
+                            VALIDATION_STRINGENCY=SILENT \\
+                            REMOVE_DUPLICATES=false \\
+                            TAGGING_POLICY=All \\
+                            REMOVE_SEQUENCING_DUPLICATES=TRUE \\
+                            SORTING_COLLECTION_SIZE_RATIO=0.1
 
-        sambamba index --nthreads=${task.cpus} ${strain}.bam
+    sambamba index --nthreads=${task.cpus} ${strain}.bam
     """
 }
 
@@ -375,12 +430,13 @@ process coverage_report {
 */
 
 process npr1_allele_check {
-
+    
+    array 20
     label 'sm'
     label 'postgatk'
 
     input:
-        tuple val(strain), val(row), path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
+        tuple val(strain), path("${strain}.in.bam"), path("${strain}.in.bam.bai"), path("reference")
 
     output:
         path("${strain}.npr1.bcf")
@@ -398,10 +454,11 @@ process npr1_allele_check {
 
 process npr1_allele_count {
     
+    array 20
     label 'sm'
     label 'postgatk'
 
-    publishDir "${workflow.launchDir}/${params.output}/", mode: 'copy'
+    publishDir "${params.output}/", mode: 'copy'
 
     input:
         path("npr_bcf")
@@ -422,6 +479,33 @@ process npr1_allele_count {
 
     """
 
+}
+
+process find_final_coverage {
+
+    array 20
+    label 'xs'
+    label 'alignment'
+
+    publishDir "${params.output}/bam", mode: 'copy', pattern: '*.coverage'
+
+    input:
+        tuple val(strain), path(bam), path(bai)
+
+    output:
+        tuple val(strain), path("${strain}.coverage")
+
+    script:
+    """
+    mosdepth --threads ${task.cpus} ${strain} ${bam}
+    awk -v STRAIN="${strain}" 'BEGIN{N=0} \
+                               { if (NR > 1){N=N+1; CHROMS[N]=\$1; COVERAGE[\$1]=\$4;}} \
+                               END{printf "strain\\tcoverage"; for (I=1;I<N;I++) printf "\\t%s", CHROMS[I]; printf "\\n"; \
+                                   printf "%s\\t%f", STRAIN, COVERAGE[CHROMS[N]]; for (I=1;I<N;I++) printf "\\t%s", COVERAGE[CHROMS[I]]; \
+                                   printf "\\n";}' ${strain}.mosdepth.summary.txt > ${strain}.coverage
+    rm ${strain}.mosdepth*
+    rm ${strain}.per-base*
+    """
 }
 
 /* 

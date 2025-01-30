@@ -168,18 +168,18 @@ process multiqc {
 
 
     input:
-        file("*")
+        tuple val(grouping), file("*")
 
     output:
-        tuple path("${params.grouping}_multiqc_report.html"), path("${params.grouping}_data/*")
+        tuple path("${grouping}_multiqc_report.html"), path("${grouping}_data/*")
 
     """
         multiqc . --data-format tsv \\
                   --config multiqc_config.yaml \\
-                  --title ${params.grouping} \\
+                  --title ${grouping} \\
                   --flat
         # mv data folder to reduce size
-        mv ${params.grouping}_multiqc_report_data/ ${params.grouping}_data/
+        mv ${grouping}_multiqc_report_data/ ${grouping}_data/
     """
 
 }
