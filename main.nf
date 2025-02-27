@@ -179,16 +179,34 @@ workflow {
                        .groupTuple() )
             .map{ row -> [row[0], row[1], row[2]] }
         
-        merge_in = alignment.out.map { row -> [row[0].strain] + [row[1], row[2]] }
+        /* only stage strains with multiple bams for merging */
+        alignment.out.map { row -> [row[0].strain] + [row[1], row[2]] }
             .concat( existing_bams)
             .groupTuple()
             .map { strain, bam, bai -> [strain, bam, bai, bam.size()] }
+            .branch { strain, bam, bai, count ->
+                need_merge: count > 1
+                no_merge: count == 0 }
+            .set{ merging }
     } else {
-        merge_in = alignment.out.map { row -> [row[0].strain] + [row[1], row[2]] }
+        /* only stage strains with multiple bams for merging */
+        alignment.out.map { row -> [row[0].strain] + [row[1], row[2]] }
             .groupTuple()
             .map { strain, bam, bai -> [strain, bam, bai, bam.size()] }
+            .branch { strain, bam, bai, count ->
+                need_merge: count > 1
+                no_merge: count == 1 }
+            .set{ merging }
     }
-    merge_in | merge_bam | mark_dups
+
+    /* only merge strains with multiple bams */
+    merge_bam( merging.need_merge )
+
+    /* recombine merged bams with bams not needing merging */
+    merged_bams = merge_bam.out
+        .mix( merging.no_merge.map { strain, bam, bai, count -> [strain, bam, bai] } )
+    
+    mark_dups( merged_bams )
 
     /* ID Level Stats and multiqc */
     alignment.out.map { row, bam, bai -> ["id", row.id, bam, bai ]} | \
@@ -198,7 +216,8 @@ workflow {
                            flagstat_id.out,
                            stats_id.out).collect()
                            .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml"))
-                           .map{ row -> ["id", row] } | multiqc_id
+                           .map{ row -> ["id", row] }
+                            // | multiqc_id
 
     /* Strain Level Stats and multiqc */
     mark_dups.out.bams.map { strain, bam, bai -> ["strain", strain, bam, bai] } | \
@@ -210,7 +229,8 @@ workflow {
                                   stats_strain.out,
                                   validatebam_strain.out).collect()
                                  .combine(Channel.fromPath("${workflow.projectDir}/scripts/multiqc_config.yaml"))
-                                 .map{ row -> ["strain", row] } | multiqc_strain
+                                 .map{ row -> ["strain", row] }
+                                //   | multiqc_strain
 
     /* Generate a bam file summary for the next step */
     strain_summary = mark_dups.out.strain_sheet.map { strain, bam, bai -> [strain, "${strain}.bam","${strain}.bam.bai"].join("\t") } \
@@ -222,10 +242,10 @@ workflow {
     find_final_coverage( mark_dups.out.bams )
 
     // summarize coverage
-    multiqc_strain.out
-        .combine(strain_summary) 
-        .combine(Channel.fromPath(params.sample_sheet))
-        .combine(Channel.fromPath("${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd")) | coverage_report
+    // multiqc_strain.out
+    //     .combine(strain_summary) 
+    //     .combine(Channel.fromPath(params.sample_sheet))
+    //     .combine(Channel.fromPath("${workflow.projectDir}/scripts/low_map_cov_for_seq_sheet.Rmd")) | coverage_report
         //.combine(summary.out) 
 
     // check for npr-1 allele
@@ -277,8 +297,13 @@ process alignment {
     array 100
     tag { data.id }
     
-    label 'md'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 4 * task.attempt }
+    memory = { 16.GB * task.attempt }
+
 
     input:
         tuple val(data), path(genome_path), val(genome_basename), path(fq1), path(fq2)
@@ -300,9 +325,9 @@ process alignment {
     sambamba view --nthreads=${task.cpus} --show-progress --sam-input --format=bam --with-header /dev/stdin | \\
     sambamba sort --nthreads=${task.cpus} --show-progress --tmpdir=. --out=${data.id}.bam /dev/stdin
     sambamba index --nthreads=${task.cpus} ${data.id}.bam
-    if [[ ! \$(samtools view ${data.id}.bam | head -n 10) ]]; then
-        exit 1;
-    fi
+    # if [[ ! \$(samtools view ${data.id}.bam | head -n 10) ]]; then
+    #     exit 1;
+    # fi
     """
 }
 
@@ -336,8 +361,12 @@ process merge_bam {
     array 20
     tag { "${strain}" }
 
-    label 'sm'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     input:
         tuple val(strain), path(bam), path(bai), val(n_count)
@@ -346,16 +375,10 @@ process merge_bam {
         tuple val(strain), file("new_${strain}.bam"), file("new_${strain}.bam.bai")
 
     script:
-    if (n_count == 1)
-        """
-        mv ${bam} ${strain}.bam
-        mv ${bai} ${strain}.bam.bai
-        """
-    else
-        """
-        sambamba merge --nthreads=${task.cpus} --show-progress new_${strain}.bam ${bam}
-        sambamba index --nthreads=${task.cpus} new_${strain}.bam
-        """
+    """
+    sambamba merge --nthreads=${task.cpus} --show-progress new_${strain}.bam ${bam}
+    sambamba index --nthreads=${task.cpus} new_${strain}.bam
+    """
 }
 
 process mark_dups {
@@ -363,8 +386,12 @@ process mark_dups {
     array 20
     tag { "${strain}" }
 
-    label 'sm'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.bam*'
 
@@ -484,8 +511,13 @@ process npr1_allele_count {
 process find_final_coverage {
 
     array 20
-    label 'xs'
+    
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 1 * task.attempt }
+    memory = { 4.GB * task.attempt }
 
     publishDir "${params.output}/bam", mode: 'copy', pattern: '*.coverage'
 
@@ -605,8 +637,12 @@ process blob_assemble {
 
 process blob_unmapped {
 
-    label 'xs'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 1 * task.attempt }
+    memory = { 4.GB * task.attempt }
 
     input:
         tuple val(STRAIN), path("UM_assembly/scaffolds.fasta"), path("Aligned.sortedByCoord.out.bam")

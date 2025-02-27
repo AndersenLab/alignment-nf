@@ -9,8 +9,12 @@ process coverage {
 
 //    publishDir "${params.output}/coverage/${grouping}", mode: 'copy'
 
-    label 'md'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 4 * task.attempt }
+    memory = { 16.GB * task.attempt }
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -37,8 +41,12 @@ process idxstats {
     
     tag {"${grouping} -> ${name}" }
 
-    label 'sm'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -54,8 +62,12 @@ process stats {
     
     tag {"${grouping} -> ${name}" }
 
-    label 'sm'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -72,8 +84,12 @@ process flagstat {
     
     tag {"${grouping} -> ${name}" }
 
-    label 'sm'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -92,8 +108,12 @@ process flagstat {
 
 process kmer_counting {
 
-    label 'sm'
     label 'alignment'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     tag { "${data.strain}" }
     when params.kmers.toString() == "true"
@@ -143,7 +163,11 @@ process validatebam {
     tag {"${grouping} -> ${name}" }
 
     label 'alignment'
-    label 'sm'
+
+    errorStrategy 'retry'
+    time { 4.hour * task.attempt }
+    cpus = { 2 * task.attempt }
+    memory = { 8.GB * task.attempt }
 
     input:
         tuple val(grouping), val(name), path("in.bam"), file("in.bam.bai")
@@ -159,7 +183,6 @@ process validatebam {
 /* MULTI-QC */
 process multiqc {
 
-    label 'md'
     label 'multiqc'
 
     publishDir "${params.output}/_aggregate/multiqc", mode: 'copy'
@@ -177,7 +200,8 @@ process multiqc {
         multiqc . --data-format tsv \\
                   --config multiqc_config.yaml \\
                   --title ${grouping} \\
-                  --flat
+                  --flat \\
+                  --profile-runtime
         # mv data folder to reduce size
         mv ${grouping}_multiqc_report_data/ ${grouping}_data/
     """
