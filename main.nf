@@ -186,7 +186,7 @@ workflow {
             .map { strain, bam, bai -> [strain, bam, bai, bam.size()] }
             .branch { strain, bam, bai, count ->
                 need_merge: count > 1
-                no_merge: count == 0 }
+                no_merge: count < 2 }
             .set{ merging }
     } else {
         /* only stage strains with multiple bams for merging */
@@ -195,7 +195,7 @@ workflow {
             .map { strain, bam, bai -> [strain, bam, bai, bam.size()] }
             .branch { strain, bam, bai, count ->
                 need_merge: count > 1
-                no_merge: count == 1 }
+                no_merge: count < 2 }
             .set{ merging }
     }
 
@@ -205,7 +205,7 @@ workflow {
     /* recombine merged bams with bams not needing merging */
     merged_bams = merge_bam.out
         .mix( merging.no_merge.map { strain, bam, bai, count -> [strain, bam, bai] } )
-    
+
     mark_dups( merged_bams )
 
     /* ID Level Stats and multiqc */
