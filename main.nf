@@ -68,7 +68,7 @@ if(params.species == "c_elegans" | params.species == "c_briggsae" | params.speci
     } else  {
         bam_dir = "${params.data_path}/${params.species}/WI/alignments"
     }
-} else if (params.species == null) {
+} else {
     if (params.reference == null) {
         if (params.help) {
         } else { 
