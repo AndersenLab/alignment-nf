@@ -403,8 +403,13 @@ process mark_dups {
         path "${strain}.duplicates.txt", emit: "markdups"
         tuple path("${strain}.bam"), path("${strain}.bam.bai"), emit: "npr"
 
+    script:
+    def maxmem=3072
+    if (task.memory) {
+        maxmem=(task.memory.mega*0.8).intValue()
+    }
     """
-    picard -Xmx${task.memory.toGiga()}g -Xms1g MarkDuplicates I=${strain}.in.bam \\
+    picard -Xmx${maxmem}M -Xms1g MarkDuplicates I=${strain}.in.bam \\
                             O=${strain}.bam \\
                             M=${strain}.duplicates.txt \\
                             VALIDATION_STRINGENCY=SILENT \\
